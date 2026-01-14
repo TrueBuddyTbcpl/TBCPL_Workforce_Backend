@@ -4,6 +4,9 @@ import com.tbcpl.workforce.admin.dto.ClientRequestDTO;
 import com.tbcpl.workforce.admin.dto.ClientResponseDTO;
 import com.tbcpl.workforce.admin.entity.Client;
 import com.tbcpl.workforce.admin.repository.ClientRepository;
+import com.tbcpl.workforce.common.exception.DuplicateResourceException;
+import com.tbcpl.workforce.common.exception.InvalidFileException;
+import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,14 +22,14 @@ import java.util.stream.Collectors;
 @Slf4j
 @Transactional
 public class ClientService {
+
     private final ClientRepository clientRepository;
 
     public ClientResponseDTO createClient(ClientRequestDTO requestDTO) {
-        log.info("creating new client : {}", requestDTO.getClientName());
+        log.info("Creating new client: {}", requestDTO.getClientName());
 
         if (clientRepository.existsByClientNameAndDeletedFalse(requestDTO.getClientName())) {
-            throw new IllegalArgumentException("client name'" + requestDTO.getClientName()
-            + "' already exists");
+            throw new DuplicateResourceException("Client", "name", requestDTO.getClientName());
         }
 
         Client client = new Client();
@@ -41,17 +44,22 @@ public class ClientService {
     }
 
     public ClientResponseDTO uploadClientLogo(Long clientId, MultipartFile file) throws IOException {
-        log.info("uploading logo client ID : {}", clientId);
+        log.info("Uploading logo for client ID: {}", clientId);
 
         Client client = clientRepository.findActiveClientById(clientId)
-                .orElseThrow(() -> new IllegalArgumentException("client not found with ID: " + clientId));
-        if (file.isEmpty()){
-            throw new IllegalArgumentException("file is empty");
+                .orElseThrow(() -> new ResourceNotFoundException("Client", "id", clientId));
+
+        if (file.isEmpty()) {
+            throw new InvalidFileException("File is empty");
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("Only image files are allowed");
+            throw new InvalidFileException("Only image files are allowed");
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new InvalidFileException("File size exceeds 5MB limit");
         }
 
         client.setClientLogo(file.getBytes());
@@ -59,14 +67,14 @@ public class ClientService {
         client.setLogoContentType(file.getContentType());
 
         Client updatedClient = clientRepository.save(client);
-        log.info("Logo Uploaded successfully with ID: {}", clientId);
+        log.info("Logo uploaded successfully for client ID: {}", clientId);
 
         return mapToResponseDTO(updatedClient);
     }
 
     @Transactional(readOnly = true)
     public List<ClientResponseDTO> getAllClients() {
-        log.info("fetching all active clients");
+        log.info("Fetching all active clients");
         return clientRepository.findAllActiveClients().stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
@@ -76,7 +84,7 @@ public class ClientService {
     public ClientResponseDTO getClientById(Long id) {
         log.info("Fetching client with ID: {}", id);
         Client client = clientRepository.findActiveClientById(id)
-                .orElseThrow(() -> new IllegalArgumentException("client not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Client", "id", id));
         return mapToResponseDTO(client);
     }
 
@@ -84,10 +92,10 @@ public class ClientService {
     public byte[] getClientLogo(Long id) {
         log.info("Fetching logo for client ID: {}", id);
         Client client = clientRepository.findActiveClientById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Client", "id", id));
 
         if (client.getClientLogo() == null) {
-            throw new IllegalArgumentException("Client logo not found for ID: " + id);
+            throw new ResourceNotFoundException("Client logo not found for client with id: " + id);
         }
 
         return client.getClientLogo();
@@ -97,11 +105,11 @@ public class ClientService {
         log.info("Updating client with ID: {}", id);
 
         Client client = clientRepository.findActiveClientById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Client", "id", id));
 
         if (!client.getClientName().equals(requestDTO.getClientName()) &&
                 clientRepository.existsByClientNameAndDeletedFalse(requestDTO.getClientName())) {
-            throw new IllegalArgumentException("Client with name '" + requestDTO.getClientName() + "' already exists");
+            throw new DuplicateResourceException("Client", "name", requestDTO.getClientName());
         }
 
         client.setClientName(requestDTO.getClientName());
@@ -115,7 +123,7 @@ public class ClientService {
         log.info("Soft deleting client with ID: {}", id);
 
         Client client = clientRepository.findActiveClientById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Client", "id", id));
 
         client.setDeleted(true);
         clientRepository.save(client);

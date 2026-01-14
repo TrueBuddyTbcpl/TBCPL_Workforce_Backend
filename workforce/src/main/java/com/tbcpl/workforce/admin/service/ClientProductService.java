@@ -6,6 +6,7 @@ import com.tbcpl.workforce.admin.entity.Client;
 import com.tbcpl.workforce.admin.entity.ClientProduct;
 import com.tbcpl.workforce.admin.repository.ClientProductRepository;
 import com.tbcpl.workforce.admin.repository.ClientRepository;
+import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,7 @@ public class ClientProductService {
         log.info("Creating new product: {} for client ID: {}", requestDTO.getProductName(), requestDTO.getClientId());
 
         Client client = clientRepository.findActiveClientById(requestDTO.getClientId())
-                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + requestDTO.getClientId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Client", "id", requestDTO.getClientId()));
 
         ClientProduct product = new ClientProduct();
         product.setProductName(requestDTO.getProductName());
@@ -53,7 +54,7 @@ public class ClientProductService {
     public ClientProductResponseDTO getProductById(Long id) {
         log.info("Fetching product with ID: {}", id);
         ClientProduct product = clientProductRepository.findActiveProductById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
         return mapToResponseDTO(product);
     }
 
@@ -62,7 +63,7 @@ public class ClientProductService {
         log.info("Fetching products for client ID: {}", clientId);
 
         if (!clientRepository.existsById(clientId)) {
-            throw new IllegalArgumentException("Client not found with ID: " + clientId);
+            throw new ResourceNotFoundException("Client", "id", clientId);
         }
 
         return clientProductRepository.findActiveProductsByClientId(clientId).stream()
@@ -74,10 +75,10 @@ public class ClientProductService {
         log.info("Updating product with ID: {}", id);
 
         ClientProduct product = clientProductRepository.findActiveProductById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
 
         Client client = clientRepository.findActiveClientById(requestDTO.getClientId())
-                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + requestDTO.getClientId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Client", "id", requestDTO.getClientId()));
 
         product.setProductName(requestDTO.getProductName());
         product.setClient(client);
@@ -92,7 +93,7 @@ public class ClientProductService {
         log.info("Soft deleting product with ID: {}", id);
 
         ClientProduct product = clientProductRepository.findActiveProductById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
 
         product.setDeleted(true);
         clientProductRepository.save(product);
