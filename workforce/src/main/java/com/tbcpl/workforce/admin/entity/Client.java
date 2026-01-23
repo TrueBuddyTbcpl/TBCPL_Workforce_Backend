@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.admin.entity;
 
-
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -26,7 +25,7 @@ public class Client {
     private Long clientId;
 
     @NotBlank(message = "client name is required")
-    @Size(max = 255, message = "Client name cannot exceed 255 characterd")
+    @Size(max = 255, message = "Client name cannot exceed 255 character")
     @Column(name = "client_name", nullable = false)
     private String clientName;
 
