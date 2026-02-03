@@ -8,6 +8,9 @@ import com.tbcpl.workforce.operation.prereport.dto.response.PreReportResponse;
 import com.tbcpl.workforce.operation.prereport.entity.enums.LeadType;
 import com.tbcpl.workforce.operation.prereport.entity.enums.ReportStatus;
 import com.tbcpl.workforce.operation.prereport.service.PreReportService;
+import com.tbcpl.workforce.operation.prereport.dto.request.PreReportRequestChangesRequest;
+import com.tbcpl.workforce.operation.prereport.dto.request.PreReportRejectRequest;
+import com.tbcpl.workforce.operation.prereport.dto.response.PreReportStepStatusResponse;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -124,4 +127,53 @@ public class PreReportController {
         preReportService.softDeleteReport(reportId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{reportId}/submit")
+    public ResponseEntity<PreReportResponse> submitForApproval(@PathVariable String reportId) {
+        log.info("POST /api/v1/operation/prereport/{}/submit - Submit report for approval", reportId);
+        PreReportResponse response = preReportService.submitForApproval(reportId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{reportId}/approve")
+    public ResponseEntity<PreReportResponse> approveReport(@PathVariable String reportId) {
+        log.info("POST /api/v1/operation/prereport/{}/approve - Approve report", reportId);
+        PreReportResponse response = preReportService.approveReport(reportId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{reportId}/request-changes")
+    public ResponseEntity<PreReportResponse> requestChanges(
+            @PathVariable String reportId,
+            @Valid @RequestBody PreReportRequestChangesRequest request) {
+        log.info("POST /api/v1/operation/prereport/{}/request-changes - Request changes", reportId);
+        PreReportResponse response = preReportService.requestChanges(reportId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{reportId}/reject")
+    public ResponseEntity<PreReportResponse> rejectReport(
+            @PathVariable String reportId,
+            @Valid @RequestBody PreReportRejectRequest request) {
+        log.info("POST /api/v1/operation/prereport/{}/reject - Reject report", reportId);
+        PreReportResponse response = preReportService.rejectReport(reportId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{reportId}/resubmit")
+    public ResponseEntity<PreReportResponse> resubmitReport(@PathVariable String reportId) {
+        log.info("POST /api/v1/operation/prereport/{}/resubmit - Resubmit report after changes", reportId);
+        PreReportResponse response = preReportService.resubmitReport(reportId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{prereportId}/step-status")
+    public ResponseEntity<PreReportStepStatusResponse> getStepStatus(@PathVariable Long prereportId) {
+        log.info("GET /api/v1/operation/prereport/{}/step-status - Get step status", prereportId);
+        PreReportStepStatusResponse response = preReportService.getStepStatus(prereportId);
+        return ResponseEntity.ok(response);
+    }
+
+
+
 }

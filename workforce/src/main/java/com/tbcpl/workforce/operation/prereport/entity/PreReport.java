@@ -42,13 +42,21 @@ public class PreReport {
     private LeadType leadType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "report_status", nullable = false)
+    @Column(name = "report_status", nullable = false, length = 30)
     @Builder.Default
     private ReportStatus reportStatus = ReportStatus.DRAFT;
 
     @Column(name = "current_step")
     @Builder.Default
     private Integer currentStep = 0;
+
+    @Lob
+    @Column(name = "change_comments", columnDefinition = "TEXT")
+    private String changeComments;
+
+    @Lob
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
 
     @Column(name = "created_by", nullable = false, length = 100)
     private String createdBy;
@@ -72,5 +80,12 @@ public class PreReport {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    // Helper method to check if report can be edited
+    public boolean canEdit() {
+        return reportStatus == ReportStatus.DRAFT
+                || reportStatus == ReportStatus.IN_PROGRESS
+                || reportStatus == ReportStatus.REQUESTED_FOR_CHANGES;
     }
 }

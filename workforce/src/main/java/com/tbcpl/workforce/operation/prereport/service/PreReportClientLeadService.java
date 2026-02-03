@@ -8,6 +8,7 @@ import com.tbcpl.workforce.operation.prereport.entity.PreReportOnlinePresence;
 import com.tbcpl.workforce.operation.prereport.repository.PreReportClientLeadRepository;
 import com.tbcpl.workforce.operation.prereport.repository.PreReportOnlinePresenceRepository;
 import com.tbcpl.workforce.operation.prereport.repository.PreReportRepository;
+import com.tbcpl.workforce.operation.prereport.entity.enums.ReportStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +61,7 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep1(Long prereportId, ClientLeadStep1Request request) {
         log.info("Updating client lead step 1 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -76,6 +78,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep2(Long prereportId, ClientLeadStep2Request request) {
         log.info("Updating client lead step 2 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -96,6 +100,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep3(Long prereportId, ClientLeadStep3Request request) {
         log.info("Updating client lead step 3 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -136,6 +142,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep4(Long prereportId, ClientLeadStep4Request request) {
         log.info("Updating client lead step 4 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -159,6 +167,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep5(Long prereportId, ClientLeadStep5Request request) {
         log.info("Updating client lead step 5 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -177,6 +187,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep6(Long prereportId, ClientLeadStep6Request request) {
         log.info("Updating client lead step 6 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -195,6 +207,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep7(Long prereportId, ClientLeadStep7Request request) {
         log.info("Updating client lead step 7 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -210,6 +224,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep8(Long prereportId, ClientLeadStep8Request request) {
         log.info("Updating client lead step 8 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -229,6 +245,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep9(Long prereportId, ClientLeadStep9Request request) {
         log.info("Updating client lead step 9 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -243,6 +261,8 @@ public class PreReportClientLeadService {
     @Transactional
     public ClientLeadStepResponse updateStep10(Long prereportId, ClientLeadStep10Request request) {
         log.info("Updating client lead step 10 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportClientLead clientLead = getClientLeadEntity(prereportId);
 
@@ -327,5 +347,21 @@ public class PreReportClientLeadService {
                 .createdAt(clientLead.getCreatedAt())
                 .updatedAt(clientLead.getUpdatedAt())
                 .build();
+    }
+
+    private void checkAndUpdateReportStatus(Long prereportId) {
+        PreReport preReport = preReportRepository.findById(prereportId)
+                .orElseThrow(() -> new RuntimeException("PreReport not found with ID: " + prereportId));
+
+        // Check if report can be edited
+        if (!preReport.canEdit()) {
+            throw new RuntimeException("Report cannot be edited. Current status: " + preReport.getReportStatus());
+        }
+
+        // Auto-update from DRAFT to IN_PROGRESS when first step is filled
+        if (preReport.getReportStatus() == ReportStatus.DRAFT) {
+            preReport.setReportStatus(ReportStatus.IN_PROGRESS);
+            preReportRepository.save(preReport);
+        }
     }
 }

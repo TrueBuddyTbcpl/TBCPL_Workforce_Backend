@@ -6,6 +6,7 @@ import com.tbcpl.workforce.operation.prereport.entity.PreReport;
 import com.tbcpl.workforce.operation.prereport.entity.PreReportTrueBuddyLead;
 import com.tbcpl.workforce.operation.prereport.repository.PreReportRepository;
 import com.tbcpl.workforce.operation.prereport.repository.PreReportTrueBuddyLeadRepository;
+import com.tbcpl.workforce.operation.prereport.entity.enums.ReportStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,10 +47,27 @@ public class PreReportTrueBuddyLeadService {
 
         return mapToResponse(trueBuddyLead);
     }
+    private void checkAndUpdateReportStatus(Long prereportId) {
+        PreReport preReport = preReportRepository.findById(prereportId)
+                .orElseThrow(() -> new RuntimeException("PreReport not found with ID: " + prereportId));
+
+        // Check if report can be edited
+        if (!preReport.canEdit()) {
+            throw new RuntimeException("Report cannot be edited. Current status: " + preReport.getReportStatus());
+        }
+
+        // Auto-update from DRAFT to IN_PROGRESS when first step is filled
+        if (preReport.getReportStatus() == ReportStatus.DRAFT) {
+            preReport.setReportStatus(ReportStatus.IN_PROGRESS);
+            preReportRepository.save(preReport);
+        }
+    }
 
     @Transactional
     public TrueBuddyLeadStepResponse updateStep1(Long prereportId, TrueBuddyLeadStep1Request request) {
         log.info("Updating TrueBuddy lead step 1 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
+
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -70,6 +88,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep2(Long prereportId, TrueBuddyLeadStep2Request request) {
         log.info("Updating TrueBuddy lead step 2 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -89,6 +108,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep3(Long prereportId, TrueBuddyLeadStep3Request request) {
         log.info("Updating TrueBuddy lead step 3 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -108,6 +128,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep4(Long prereportId, TrueBuddyLeadStep4Request request) {
         log.info("Updating TrueBuddy lead step 4 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -131,6 +152,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep5(Long prereportId, TrueBuddyLeadStep5Request request) {
         log.info("Updating TrueBuddy lead step 5 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -149,6 +171,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep6(Long prereportId, TrueBuddyLeadStep6Request request) {
         log.info("Updating TrueBuddy lead step 6 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -167,6 +190,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep7(Long prereportId, TrueBuddyLeadStep7Request request) {
         log.info("Updating TrueBuddy lead step 7 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -182,6 +206,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep8(Long prereportId, TrueBuddyLeadStep8Request request) {
         log.info("Updating TrueBuddy lead step 8 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -201,6 +226,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep9(Long prereportId, TrueBuddyLeadStep9Request request) {
         log.info("Updating TrueBuddy lead step 9 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -215,6 +241,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep10(Long prereportId, TrueBuddyLeadStep10Request request) {
         log.info("Updating TrueBuddy lead step 10 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 
@@ -229,6 +256,7 @@ public class PreReportTrueBuddyLeadService {
     @Transactional
     public TrueBuddyLeadStepResponse updateStep11(Long prereportId, TrueBuddyLeadStep11Request request) {
         log.info("Updating TrueBuddy lead step 11 for prereportId: {}", prereportId);
+        checkAndUpdateReportStatus(prereportId);
 
         PreReportTrueBuddyLead trueBuddyLead = getTrueBuddyLeadEntity(prereportId);
 

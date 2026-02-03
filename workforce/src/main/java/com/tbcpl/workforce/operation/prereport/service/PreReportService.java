@@ -13,6 +13,11 @@ import com.tbcpl.workforce.operation.prereport.entity.PreReport;
 import com.tbcpl.workforce.operation.prereport.entity.enums.LeadType;
 import com.tbcpl.workforce.operation.prereport.entity.enums.ReportStatus;
 import com.tbcpl.workforce.operation.prereport.repository.PreReportRepository;
+import com.tbcpl.workforce.operation.prereport.dto.request.PreReportRequestChangesRequest;
+import com.tbcpl.workforce.operation.prereport.dto.request.PreReportRejectRequest;
+import com.tbcpl.workforce.operation.prereport.dto.response.PreReportStepStatusResponse;
+import com.tbcpl.workforce.operation.prereport.dto.response.StepStatusDetail;
+import com.tbcpl.workforce.operation.prereport.entity.enums.StepStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -207,6 +212,143 @@ public class PreReportService {
 
         log.info("Pre-report soft deleted successfully: {}", reportId);
     }
+    @Transactional
+    public PreReportResponse submitForApproval(String reportId) {
+        log.info("Submitting report for approval: {}", reportId);
+
+        PreReport preReport = preReportRepository.findByReportIdAndIsDeletedFalse(reportId)
+                .orElseThrow(() -> new RuntimeException("Pre-report not found with ID: " + reportId));
+
+        // Validation: Can only submit if status is IN_PROGRESS or REQUESTED_FOR_CHANGES
+        if (preReport.getReportStatus() != ReportStatus.IN_PROGRESS
+                && preReport.getReportStatus() != ReportStatus.REQUESTED_FOR_CHANGES) {
+            throw new RuntimeException("Report can only be submitted when status is IN_PROGRESS or REQUESTED_FOR_CHANGES");
+        }
+
+        preReport.setReportStatus(ReportStatus.WAITING_FOR_APPROVAL);
+        preReport.setChangeComments(null); // Clear previous comments
+        preReport.setUpdatedAt(LocalDateTime.now());
+
+        PreReport updatedReport = preReportRepository.save(preReport);
+
+        log.info("Report submitted for approval: {}", reportId);
+        return mapToResponse(updatedReport);
+    }
+
+    @Transactional
+    public PreReportResponse approveReport(String reportId) {
+        log.info("Approving report: {}", reportId);
+
+        PreReport preReport = preReportRepository.findByReportIdAndIsDeletedFalse(reportId)
+                .orElseThrow(() -> new RuntimeException("Pre-report not found with ID: " + reportId));
+
+        // Validation: Can only approve if status is WAITING_FOR_APPROVAL
+        if (preReport.getReportStatus() != ReportStatus.WAITING_FOR_APPROVAL) {
+            throw new RuntimeException("Report can only be approved when status is WAITING_FOR_APPROVAL");
+        }
+
+        preReport.setReportStatus(ReportStatus.READY_FOR_CREATE_CASE);
+        preReport.setUpdatedAt(LocalDateTime.now());
+
+        PreReport updatedReport = preReportRepository.save(preReport);
+
+        log.info("Report approved: {}", reportId);
+        return mapToResponse(updatedReport);
+    }
+
+    @Transactional
+    public PreReportResponse requestChanges(String reportId, PreReportRequestChangesRequest request) {
+        log.info("Requesting changes for report: {}", reportId);
+
+        PreReport preReport = preReportRepository.findByReportIdAndIsDeletedFalse(reportId)
+                .orElseThrow(() -> new RuntimeException("Pre-report not found with ID: " + reportId));
+
+        // Validation: Can only request changes if status is WAITING_FOR_APPROVAL
+        if (preReport.getReportStatus() != ReportStatus.WAITING_FOR_APPROVAL) {
+            throw new RuntimeException("Changes can only be requested when status is WAITING_FOR_APPROVAL");
+        }
+
+        preReport.setReportStatus(ReportStatus.REQUESTED_FOR_CHANGES);
+        preReport.setChangeComments(request.getChangeComments());
+        preReport.setUpdatedAt(LocalDateTime.now());
+
+        PreReport updatedReport = preReportRepository.save(preReport);
+
+        log.info("Changes requested for report: {}", reportId);
+        return mapToResponse(updatedReport);
+    }
+
+    @Transactional
+    public PreReportResponse rejectReport(String reportId, PreReportRejectRequest request) {
+        log.info("Rejecting report: {}", reportId);
+
+        PreReport preReport = preReportRepository.findByReportIdAndIsDeletedFalse(reportId)
+                .orElseThrow(() -> new RuntimeException("Pre-report not found with ID: " + reportId));
+
+        // Validation: Can only reject if status is WAITING_FOR_APPROVAL
+        if (preReport.getReportStatus() != ReportStatus.WAITING_FOR_APPROVAL) {
+            throw new RuntimeException("Report can only be rejected when status is WAITING_FOR_APPROVAL");
+        }
+
+        preReport.setReportStatus(ReportStatus.REJECTED_BY_CLIENT);
+        preReport.setRejectionReason(request.getRejectionReason());
+        preReport.setUpdatedAt(LocalDateTime.now());
+
+        PreReport updatedReport = preReportRepository.save(preReport);
+
+        log.info("Report rejected: {}", reportId);
+        return mapToResponse(updatedReport);
+    }
+
+    @Transactional
+    public PreReportResponse resubmitReport(String reportId) {
+        log.info("Re-submitting report after changes: {}", reportId);
+
+        PreReport preReport = preReportRepository.findByReportIdAndIsDeletedFalse(reportId)
+                .orElseThrow(() -> new RuntimeException("Pre-report not found with ID: " + reportId));
+
+        // Validation: Can only resubmit if status is REQUESTED_FOR_CHANGES
+        if (preReport.getReportStatus() != ReportStatus.REQUESTED_FOR_CHANGES) {
+            throw new RuntimeException("Report can only be resubmitted when status is REQUESTED_FOR_CHANGES");
+        }
+
+        preReport.setReportStatus(ReportStatus.WAITING_FOR_APPROVAL);
+        preReport.setChangeComments(null); // Clear comments after resubmission
+        preReport.setUpdatedAt(LocalDateTime.now());
+
+        PreReport updatedReport = preReportRepository.save(preReport);
+
+        log.info("Report resubmitted: {}", reportId);
+        return mapToResponse(updatedReport);
+    }
+
+    @Transactional(readOnly = true)
+    public PreReportStepStatusResponse getStepStatus(Long prereportId) {
+        log.info("Fetching step status for prereportId: {}", prereportId);
+
+        PreReport preReport = preReportRepository.findById(prereportId)
+                .orElseThrow(() -> new RuntimeException("Pre-report not found with ID: " + prereportId));
+
+        List<StepStatusDetail> stepStatuses;
+
+        if (preReport.getLeadType() == LeadType.CLIENT_LEAD) {
+            stepStatuses = getClientLeadStepStatuses(prereportId);
+        } else {
+            stepStatuses = getTrueBuddyLeadStepStatuses(prereportId);
+        }
+
+        return PreReportStepStatusResponse.builder()
+                .prereportId(preReport.getId())
+                .reportId(preReport.getReportId())
+                .leadType(preReport.getLeadType())
+                .reportStatus(preReport.getReportStatus())
+                .currentStep(preReport.getCurrentStep())
+                .canEdit(preReport.canEdit())
+                .changeComments(preReport.getChangeComments())
+                .rejectionReason(preReport.getRejectionReason())
+                .steps(stepStatuses)
+                .build();
+    }
 
     // ✅ ADDED: Validation method
     private void validateProductsBelongToClient(Long clientId, List<Long> productIds) {
@@ -242,10 +384,10 @@ public class PreReportService {
         return PreReportResponse.builder()
                 .id(preReport.getId())
                 .reportId(preReport.getReportId())
-                .clientId(preReport.getClient().getClientId())  // ✅ FIXED
-                .clientName(preReport.getClient().getClientName())  // ✅ ADDED
+                .clientId(preReport.getClient().getClientId())
+                .clientName(preReport.getClient().getClientName())
                 .productIds(preReport.getProductIds())
-                .productNames(productNames)  // ✅ ADDED
+                .productNames(productNames)
                 .leadType(preReport.getLeadType())
                 .reportStatus(preReport.getReportStatus())
                 .currentStep(preReport.getCurrentStep())
@@ -268,4 +410,79 @@ public class PreReportService {
                 .pageSize(reportPage.getSize())
                 .build();
     }
+
+    private List<StepStatusDetail> getClientLeadStepStatuses(Long prereportId) {
+        try {
+            var clientLead = clientLeadService.getClientLeadByPrereportId(prereportId);
+            return List.of(
+                    StepStatusDetail.builder().stepNumber(1).stepName("Basic Information")
+                            .status(clientLead.getDateInfoReceived() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(2).stepName("Scope Selection")
+                            .status(clientLead.getScopeDueDiligence() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(3).stepName("Target Details")
+                            .status(clientLead.getEntityName() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(4).stepName("Verification")
+                            .status(clientLead.getVerificationClientDiscussion() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(5).stepName("Observations")
+                            .status(clientLead.getObsIdentifiableTarget() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(6).stepName("Quality Assessment")
+                            .status(clientLead.getQaCompleteness() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(7).stepName("Assessment")
+                            .status(clientLead.getAssessmentOverall() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(8).stepName("Recommendations")
+                            .status(clientLead.getRecMarketSurvey() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(9).stepName("Remarks")
+                            .status(clientLead.getRemarks() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(10).stepName("Disclaimer")
+                            .status(clientLead.getCustomDisclaimer() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build()
+            );
+        } catch (Exception e) {
+            // Return all PENDING if lead data not found
+            return createPendingSteps(10);
+        }
+    }
+
+    private List<StepStatusDetail> getTrueBuddyLeadStepStatuses(Long prereportId) {
+        try {
+            var trueBuddyLead = trueBuddyLeadService.getTrueBuddyLeadByPrereportId(prereportId);
+            return List.of(
+                    StepStatusDetail.builder().stepNumber(1).stepName("Basic Information")
+                            .status(trueBuddyLead.getDateInternalLeadGeneration() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(2).stepName("Scope")
+                            .status(trueBuddyLead.getScopeIprSupplier() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(3).stepName("Intelligence Nature")
+                            .status(trueBuddyLead.getIntelNature() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(4).stepName("Verification")
+                            .status(trueBuddyLead.getVerificationIntelCorroboration() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(5).stepName("Observations")
+                            .status(trueBuddyLead.getObsOperationScale() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(6).stepName("Risk Assessment")
+                            .status(trueBuddyLead.getRiskSourceReliability() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(7).stepName("Assessment")
+                            .status(trueBuddyLead.getAssessmentOverall() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(8).stepName("Recommendations")
+                            .status(trueBuddyLead.getRecCovertValidation() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(9).stepName("Confidentiality")
+                            .status(trueBuddyLead.getConfidentialityNote() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(10).stepName("Remarks")
+                            .status(trueBuddyLead.getRemarks() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                    StepStatusDetail.builder().stepNumber(11).stepName("Disclaimer")
+                            .status(trueBuddyLead.getCustomDisclaimer() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build()
+            );
+        } catch (Exception e) {
+            // Return all PENDING if lead data not found
+            return createPendingSteps(11);
+        }
+    }
+
+    private List<StepStatusDetail> createPendingSteps(int count) {
+        return java.util.stream.IntStream.rangeClosed(1, count)
+                .mapToObj(i -> StepStatusDetail.builder()
+                        .stepNumber(i)
+                        .stepName("Step " + i)
+                        .status(StepStatus.PENDING)
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
 }

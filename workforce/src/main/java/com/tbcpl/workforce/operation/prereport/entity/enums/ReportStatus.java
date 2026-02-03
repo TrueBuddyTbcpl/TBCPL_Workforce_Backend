@@ -2,6 +2,9 @@ package com.tbcpl.workforce.operation.prereport.entity.enums;
 
 public enum ReportStatus {
     DRAFT,
-    COMPLETED,
-    SUBMITTED
+    IN_PROGRESS,
+    WAITING_FOR_APPROVAL,
+    REQUESTED_FOR_CHANGES,
+    REJECTED_BY_CLIENT,
+    READY_FOR_CREATE_CASE,
 }
