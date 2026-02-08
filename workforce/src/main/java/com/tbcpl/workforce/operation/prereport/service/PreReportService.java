@@ -10,6 +10,7 @@ import com.tbcpl.workforce.operation.prereport.dto.response.PreReportDetailRespo
 import com.tbcpl.workforce.operation.prereport.dto.response.PreReportListResponse;
 import com.tbcpl.workforce.operation.prereport.dto.response.PreReportResponse;
 import com.tbcpl.workforce.operation.prereport.entity.PreReport;
+import com.tbcpl.workforce.operation.prereport.entity.PreReportStepTracking;
 import com.tbcpl.workforce.operation.prereport.entity.enums.LeadType;
 import com.tbcpl.workforce.operation.prereport.entity.enums.ReportStatus;
 import com.tbcpl.workforce.operation.prereport.repository.PreReportRepository;
@@ -18,12 +19,14 @@ import com.tbcpl.workforce.operation.prereport.dto.request.PreReportRejectReques
 import com.tbcpl.workforce.operation.prereport.dto.response.PreReportStepStatusResponse;
 import com.tbcpl.workforce.operation.prereport.dto.response.StepStatusDetail;
 import com.tbcpl.workforce.operation.prereport.entity.enums.StepStatus;
+import com.tbcpl.workforce.operation.prereport.repository.PreReportStepTrackingRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import java.util.Map;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -40,17 +43,20 @@ public class PreReportService {
     private final ClientProductRepository clientProductRepository;
     private final PreReportClientLeadService clientLeadService;
     private final PreReportTrueBuddyLeadService trueBuddyLeadService;
+    private final PreReportStepTrackingRepository stepTrackingRepository;
 
     public PreReportService(PreReportRepository preReportRepository,
                             ClientRepository clientRepository,
                             ClientProductRepository clientProductRepository,
                             @Lazy PreReportClientLeadService clientLeadService,
-                            @Lazy PreReportTrueBuddyLeadService trueBuddyLeadService) {
+                            @Lazy PreReportTrueBuddyLeadService trueBuddyLeadService,
+                            PreReportStepTrackingRepository stepTrackingRepository) {
         this.preReportRepository = preReportRepository;
         this.clientRepository = clientRepository;
         this.clientProductRepository = clientProductRepository;
         this.clientLeadService = clientLeadService;
         this.trueBuddyLeadService = trueBuddyLeadService;
+        this.stepTrackingRepository = stepTrackingRepository;
     }
 
     @Transactional
@@ -350,6 +356,31 @@ public class PreReportService {
                 .build();
     }
 
+    @Transactional
+    public void markStepAsCompleted(Long prereportId, int stepNumber) {
+        log.info("Marking step {} as COMPLETED for prereportId: {}", stepNumber, prereportId);
+
+        PreReportStepTracking tracking = stepTrackingRepository
+                .findByPrereportIdAndStepNumber(prereportId, stepNumber)
+                .orElse(PreReportStepTracking.builder()
+                        .prereportId(prereportId)
+                        .stepNumber(stepNumber)
+                        .build());
+
+        tracking.setStatus(StepStatus.COMPLETED);
+        stepTrackingRepository.save(tracking);
+    }
+
+    @Transactional
+    public void markStepAsSkipped(Long prereportId, int stepNumber) {
+        log.info("Marking step {} as PENDING (skipped) for prereportId: {}", stepNumber, prereportId);
+
+        // When skipped, we DON'T create a tracking record
+        // or we create one with PENDING status
+        // This way, the step remains PENDING until actually filled
+    }
+
+
     // ✅ ADDED: Validation method
     private void validateProductsBelongToClient(Long clientId, List<Long> productIds) {
         List<ClientProduct> clientProducts = clientProductRepository.findActiveProductsByClientId(clientId);
@@ -414,66 +445,102 @@ public class PreReportService {
     private List<StepStatusDetail> getClientLeadStepStatuses(Long prereportId) {
         try {
             var clientLead = clientLeadService.getClientLeadByPrereportId(prereportId);
+
+            // Fetch step tracking data
+            List<PreReportStepTracking> trackingList = stepTrackingRepository
+                    .findByPrereportIdOrderByStepNumberAsc(prereportId);
+
+            Map<Integer, StepStatus> trackingMap = trackingList.stream()
+                    .collect(Collectors.toMap(
+                            PreReportStepTracking::getStepNumber,
+                            PreReportStepTracking::getStatus
+                    ));
+
             return List.of(
                     StepStatusDetail.builder().stepNumber(1).stepName("Basic Information")
-                            .status(clientLead.getDateInfoReceived() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 1, clientLead.getDateInfoReceived() != null)).build(),
                     StepStatusDetail.builder().stepNumber(2).stepName("Scope Selection")
-                            .status(clientLead.getScopeDueDiligence() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 2, clientLead.getScopeDueDiligence() != null)).build(),
                     StepStatusDetail.builder().stepNumber(3).stepName("Target Details")
-                            .status(clientLead.getEntityName() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 3, clientLead.getEntityName() != null)).build(),
                     StepStatusDetail.builder().stepNumber(4).stepName("Verification")
-                            .status(clientLead.getVerificationClientDiscussion() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 4, clientLead.getVerificationClientDiscussion() != null)).build(),
                     StepStatusDetail.builder().stepNumber(5).stepName("Observations")
-                            .status(clientLead.getObsIdentifiableTarget() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 5, clientLead.getObsIdentifiableTarget() != null)).build(),
                     StepStatusDetail.builder().stepNumber(6).stepName("Quality Assessment")
-                            .status(clientLead.getQaCompleteness() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 6, clientLead.getQaCompleteness() != null)).build(),
                     StepStatusDetail.builder().stepNumber(7).stepName("Assessment")
-                            .status(clientLead.getAssessmentOverall() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 7, clientLead.getAssessmentOverall() != null)).build(),
                     StepStatusDetail.builder().stepNumber(8).stepName("Recommendations")
-                            .status(clientLead.getRecMarketSurvey() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 8, clientLead.getRecMarketSurvey() != null)).build(),
                     StepStatusDetail.builder().stepNumber(9).stepName("Remarks")
-                            .status(clientLead.getRemarks() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 9, clientLead.getRemarks() != null)).build(),
                     StepStatusDetail.builder().stepNumber(10).stepName("Disclaimer")
-                            .status(clientLead.getCustomDisclaimer() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build()
+                            .status(getStepStatus(trackingMap, 10, clientLead.getCustomDisclaimer() != null)).build()
             );
         } catch (Exception e) {
-            // Return all PENDING if lead data not found
             return createPendingSteps(10);
         }
     }
 
+
+
+
     private List<StepStatusDetail> getTrueBuddyLeadStepStatuses(Long prereportId) {
         try {
             var trueBuddyLead = trueBuddyLeadService.getTrueBuddyLeadByPrereportId(prereportId);
+
+            // Fetch step tracking data
+            List<PreReportStepTracking> trackingList = stepTrackingRepository
+                    .findByPrereportIdOrderByStepNumberAsc(prereportId);
+
+            Map<Integer, StepStatus> trackingMap = trackingList.stream()
+                    .collect(Collectors.toMap(
+                            PreReportStepTracking::getStepNumber,
+                            PreReportStepTracking::getStatus
+                    ));
+
             return List.of(
                     StepStatusDetail.builder().stepNumber(1).stepName("Basic Information")
-                            .status(trueBuddyLead.getDateInternalLeadGeneration() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 1, trueBuddyLead.getDateInternalLeadGeneration() != null)).build(),
                     StepStatusDetail.builder().stepNumber(2).stepName("Scope")
-                            .status(trueBuddyLead.getScopeIprSupplier() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 2, trueBuddyLead.getScopeIprSupplier() != null)).build(),
                     StepStatusDetail.builder().stepNumber(3).stepName("Intelligence Nature")
-                            .status(trueBuddyLead.getIntelNature() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 3, trueBuddyLead.getIntelNature() != null)).build(),
                     StepStatusDetail.builder().stepNumber(4).stepName("Verification")
-                            .status(trueBuddyLead.getVerificationIntelCorroboration() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 4, trueBuddyLead.getVerificationIntelCorroboration() != null)).build(),
                     StepStatusDetail.builder().stepNumber(5).stepName("Observations")
-                            .status(trueBuddyLead.getObsOperationScale() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 5, trueBuddyLead.getObsOperationScale() != null)).build(),
                     StepStatusDetail.builder().stepNumber(6).stepName("Risk Assessment")
-                            .status(trueBuddyLead.getRiskSourceReliability() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 6, trueBuddyLead.getRiskSourceReliability() != null)).build(),
                     StepStatusDetail.builder().stepNumber(7).stepName("Assessment")
-                            .status(trueBuddyLead.getAssessmentOverall() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 7, trueBuddyLead.getAssessmentOverall() != null)).build(),
                     StepStatusDetail.builder().stepNumber(8).stepName("Recommendations")
-                            .status(trueBuddyLead.getRecCovertValidation() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 8, trueBuddyLead.getRecCovertValidation() != null)).build(),
                     StepStatusDetail.builder().stepNumber(9).stepName("Confidentiality")
-                            .status(trueBuddyLead.getConfidentialityNote() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 9, trueBuddyLead.getConfidentialityNote() != null)).build(),
                     StepStatusDetail.builder().stepNumber(10).stepName("Remarks")
-                            .status(trueBuddyLead.getRemarks() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build(),
+                            .status(getStepStatus(trackingMap, 10, trueBuddyLead.getRemarks() != null)).build(),
                     StepStatusDetail.builder().stepNumber(11).stepName("Disclaimer")
-                            .status(trueBuddyLead.getCustomDisclaimer() != null ? StepStatus.COMPLETED : StepStatus.PENDING).build()
+                            .status(getStepStatus(trackingMap, 11, trueBuddyLead.getCustomDisclaimer() != null)).build()
             );
         } catch (Exception e) {
-            // Return all PENDING if lead data not found
             return createPendingSteps(11);
         }
     }
+
+    // Helper method to determine step status
+    private StepStatus getStepStatus(Map<Integer, StepStatus> trackingMap, int stepNumber, boolean hasData) {
+        // If explicitly tracked, use that status
+        if (trackingMap.containsKey(stepNumber)) {
+            return trackingMap.get(stepNumber);
+        }
+
+        // Otherwise, determine by data presence
+        return hasData ? StepStatus.COMPLETED : StepStatus.PENDING;
+    }
+
+
 
     private List<StepStatusDetail> createPendingSteps(int count) {
         return java.util.stream.IntStream.rangeClosed(1, count)

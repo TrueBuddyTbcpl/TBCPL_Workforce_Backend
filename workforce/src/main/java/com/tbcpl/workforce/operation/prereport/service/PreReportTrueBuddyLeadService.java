@@ -82,6 +82,8 @@ public class PreReportTrueBuddyLeadService {
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 1);
 
+        preReportService.markStepAsCompleted(prereportId, 1);
+
         return mapToResponse(trueBuddyLead);
     }
 
@@ -102,6 +104,8 @@ public class PreReportTrueBuddyLeadService {
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 2);
 
+        preReportService.markStepAsCompleted(prereportId, 2);
+
         return mapToResponse(trueBuddyLead);
     }
 
@@ -121,6 +125,8 @@ public class PreReportTrueBuddyLeadService {
 
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 3);
+
+        preReportService.markStepAsCompleted(prereportId, 3);
 
         return mapToResponse(trueBuddyLead);
     }
@@ -146,6 +152,8 @@ public class PreReportTrueBuddyLeadService {
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 4);
 
+        preReportService.markStepAsCompleted(prereportId, 4);
+
         return mapToResponse(trueBuddyLead);
     }
 
@@ -164,6 +172,8 @@ public class PreReportTrueBuddyLeadService {
 
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 5);
+
+        preReportService.markStepAsCompleted(prereportId, 5);
 
         return mapToResponse(trueBuddyLead);
     }
@@ -184,6 +194,8 @@ public class PreReportTrueBuddyLeadService {
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 6);
 
+        preReportService.markStepAsCompleted(prereportId, 6);
+
         return mapToResponse(trueBuddyLead);
     }
 
@@ -199,6 +211,8 @@ public class PreReportTrueBuddyLeadService {
 
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 7);
+
+        preReportService.markStepAsCompleted(prereportId, 7);
 
         return mapToResponse(trueBuddyLead);
     }
@@ -220,6 +234,8 @@ public class PreReportTrueBuddyLeadService {
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 8);
 
+        preReportService.markStepAsCompleted(prereportId, 8);
+
         return mapToResponse(trueBuddyLead);
     }
 
@@ -235,6 +251,8 @@ public class PreReportTrueBuddyLeadService {
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 9);
 
+        preReportService.markStepAsCompleted(prereportId, 9);
+
         return mapToResponse(trueBuddyLead);
     }
 
@@ -249,6 +267,7 @@ public class PreReportTrueBuddyLeadService {
 
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 10);
+        preReportService.markStepAsCompleted(prereportId, 10);
 
         return mapToResponse(trueBuddyLead);
     }
@@ -264,6 +283,7 @@ public class PreReportTrueBuddyLeadService {
 
         trueBuddyLeadRepository.save(trueBuddyLead);
         preReportService.updateCurrentStep(getReportIdFromPrereportId(prereportId), 11);
+        preReportService.markStepAsCompleted(prereportId, 11);
 
         return mapToResponse(trueBuddyLead);
     }
