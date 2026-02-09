@@ -30,7 +30,7 @@ public final class ApiEndpoints {
 
     // Employee endpoints
     public static final String EMPLOYEES = "/employees";
-    public static final String EMPLOYEE_BY_ID = "/employees/{id}";
+    public static final String EMPLOYEE_BY_ID = "/employees/empId/{empId:.+}";
     public static final String EMPLOYEE_BY_EMP_ID = "/employees/empId/{empId}";
     public static final String EMPLOYEES_FILTER = "/employees/filter";
     public static final String EMPLOYEES_BY_DEPARTMENT = "/employees/department/{departmentId}";

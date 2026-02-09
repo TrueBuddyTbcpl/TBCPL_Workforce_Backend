@@ -47,6 +47,9 @@ public class SecurityConfig {
 
                 // Configure authorization rules
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ CRITICAL: Allow all OPTIONS requests for CORS preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         // ============================================
                         // PUBLIC ENDPOINTS (No Authentication) - TESTING
                         // ============================================
