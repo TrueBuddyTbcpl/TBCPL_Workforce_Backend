@@ -19,10 +19,14 @@ public final class ApiEndpoints {
     public static final String AUTH_CHANGE_PASSWORD = "/change-password";
     public static final String AUTH_RESET_PASSWORD = "/reset-password";
     public static final String AUTH_REFRESH_TOKEN = "/refresh-token";
+    public static final String AUTH_PROFILE = "/profile";
 
     // Department endpoints
     public static final String DEPARTMENTS = "/departments";
     public static final String DEPARTMENT_BY_ID = "/departments/{id}";
+
+
+
 
     // Role endpoints
     public static final String ROLES = "/roles";
@@ -31,6 +35,8 @@ public final class ApiEndpoints {
     // Employee endpoints
     public static final String EMPLOYEES = "/employees";
     public static final String EMPLOYEE_BY_ID = "/employees/empId/{empId:.+}";
+    public static final String EMPLOYEE_BY_DATABASE_ID = "/employees/id/{id}";
+
     public static final String EMPLOYEE_BY_EMP_ID = "/employees/empId/{empId}";
     public static final String EMPLOYEES_FILTER = "/employees/filter";
     public static final String EMPLOYEES_BY_DEPARTMENT = "/employees/department/{departmentId}";

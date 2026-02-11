@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -30,15 +31,18 @@ public class PreReportController {
 
     @PostMapping("/initialize")
     public ResponseEntity<PreReportResponse> initializeReport(
-            @Valid @RequestBody PreReportInitializeRequest request) {
+            @Valid @RequestBody PreReportInitializeRequest request,
+            Authentication authentication) {
         log.info("POST /api/v1/operation/prereport/initialize - Initializing pre-report");
 
-        // TODO: Extract createdBy from security context after JWT implementation
-        String createdBy = "system"; // Placeholder
+        // ✅ authentication.getName() now returns empId
+        String createdBy = authentication.getName();
+        log.info("✅ Report created by empId: {}", createdBy);
 
         PreReportResponse response = preReportService.initializeReport(request, createdBy);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
 
     @GetMapping("/{reportId}")
     public ResponseEntity<PreReportResponse> getReportByReportId(@PathVariable String reportId) {

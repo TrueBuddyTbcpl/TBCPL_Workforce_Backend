@@ -25,7 +25,7 @@ public class PreReportResponse {
     private LeadType leadType;
     private ReportStatus reportStatus;
     private Integer currentStep;
-    private String createdBy;
+    private Long createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

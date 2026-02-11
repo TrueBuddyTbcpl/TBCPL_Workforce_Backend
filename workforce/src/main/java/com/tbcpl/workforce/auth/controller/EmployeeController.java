@@ -93,6 +93,17 @@ public class EmployeeController {
         );
     }
 
+    @GetMapping(ApiEndpoints.EMPLOYEE_BY_DATABASE_ID)
+    public ResponseEntity<ApiResponse<EmployeeResponse>> getEmployeeByDatabaseId(@PathVariable Long id) {
+        log.info("Get employee by database ID: {}", id);
+
+        EmployeeResponse employee = employeeService.getEmployeeById(id);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Employee retrieved successfully", employee)
+        );
+    }
+
     /**
      * Get employee by empId (e.g., 2026/001)
      * HR and ADMIN can access

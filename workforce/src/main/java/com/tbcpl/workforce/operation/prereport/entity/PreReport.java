@@ -59,7 +59,7 @@ public class PreReport {
     private String rejectionReason;
 
     @Column(name = "created_by", nullable = false, length = 100)
-    private String createdBy;
+    private Long createdBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

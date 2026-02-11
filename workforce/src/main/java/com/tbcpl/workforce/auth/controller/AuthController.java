@@ -3,9 +3,11 @@ package com.tbcpl.workforce.auth.controller;
 import com.tbcpl.workforce.auth.dto.request.LoginRequest;
 import com.tbcpl.workforce.auth.dto.request.PasswordChangeRequest;
 import com.tbcpl.workforce.auth.dto.request.PasswordResetRequest;
+import com.tbcpl.workforce.auth.dto.response.EmployeeResponse;
 import com.tbcpl.workforce.auth.dto.response.LoginResponse;
 import com.tbcpl.workforce.auth.dto.response.PasswordChangeResponse;
 import com.tbcpl.workforce.auth.service.AuthService;
+import com.tbcpl.workforce.auth.service.EmployeeService;
 import com.tbcpl.workforce.common.constants.ApiEndpoints;
 import com.tbcpl.workforce.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -15,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 
 /**
  * Controller for authentication endpoints
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final EmployeeService employeeService;
 
     /**
      * Login endpoint
@@ -101,4 +105,25 @@ public class AuthController {
                 ApiResponse.success("Password reset successful. Employee must login with new password.", null)
         );
     }
+
+    /**
+     * Get current logged-in employee profile
+     * Requires authentication
+     */
+    @GetMapping(ApiEndpoints.AUTH_PROFILE)
+    public ResponseEntity<ApiResponse<EmployeeResponse>> getCurrentEmployeeProfile(
+            Authentication authentication
+    ) {
+        // ✅ authentication.getName() now returns empId
+        String empId = authentication.getName();
+        log.info("Fetching profile for empId: {}", empId);
+
+        EmployeeResponse employee = employeeService.getEmployeeByEmpId(empId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Profile retrieved successfully", employee)
+        );
+    }
+
+
 }

@@ -76,8 +76,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + ApiEndpoints.ROLES).hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
                         .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + "/roles/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
 
-                        // Employee endpoints (HR and ADMIN can manage)
-                        .requestMatchers(ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES + "/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        // ✅ SPECIFIC RULE FIRST: Get employee by ID (any authenticated user)
+                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + "/employees/*").authenticated()
+
+                        // ✅ SPECIFIC RULE: Get employee by empId (any authenticated user)
+                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + "/employees/empId/**").authenticated()
+
+                        // ✅ GENERAL RULE AFTER: Employee management endpoints (HR and ADMIN can manage)
+                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES).hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        .requestMatchers(HttpMethod.PUT, ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES + "/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        .requestMatchers(HttpMethod.DELETE, ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES + "/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
 
                         // Login attempt endpoints (HR and ADMIN can view)
                         .requestMatchers(ApiEndpoints.AUTH_BASE + ApiEndpoints.LOGIN_ATTEMPTS + "/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
@@ -87,6 +95,9 @@ public class SecurityConfig {
 
                         // Change password (any authenticated user)
                         .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_CHANGE_PASSWORD).authenticated()
+
+                        // Get profile (any authenticated user)
+                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_PROFILE).authenticated()
 
                         // Logout (any authenticated user)
                         .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_LOGOUT).authenticated()

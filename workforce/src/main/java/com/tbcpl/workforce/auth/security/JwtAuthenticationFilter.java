@@ -53,9 +53,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Extract JWT token (remove "Bearer " prefix)
             final String jwt = authHeader.substring(7);
             final String username = jwtUtil.extractUsername(jwt);
+            final String empId = jwtUtil.extractEmpId(jwt); // ✅ Extract empId from JWT
 
             // Validate token and authenticate
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null && empId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 // Validate token
                 if (!jwtUtil.validateToken(jwt, username)) {
@@ -74,12 +75,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // Load employee details
                 Employee employee = employeeService.getEmployeeEntityByEmail(username);
 
-                // Create CustomUserDetails
+                // Create CustomUserDetails with empId as principal
                 CustomUserDetails userDetails = new CustomUserDetails(employee);
 
-                // Create authentication token
+                // ✅ CHANGED: Use empId as principal instead of userDetails
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
+                        empId, // Use empId as principal (authentication.getName() will return this)
                         null,
                         userDetails.getAuthorities()
                 );
@@ -92,11 +93,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // Update session activity
                 sessionService.updateSessionActivity(jwt);
 
-                log.debug("User authenticated: {} with authorities: {}", username, userDetails.getAuthorities());
+                log.debug("✅ User authenticated: {} (empId: {}) with authorities: {}", username, empId, userDetails.getAuthorities());
             }
 
         } catch (Exception e) {
-            log.error("Cannot set user authentication", e);
+            log.error("❌ Cannot set user authentication", e);
         }
 
         filterChain.doFilter(request, response);

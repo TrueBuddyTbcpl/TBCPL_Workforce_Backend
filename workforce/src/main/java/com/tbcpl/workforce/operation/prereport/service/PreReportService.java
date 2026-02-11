@@ -20,6 +20,8 @@ import com.tbcpl.workforce.operation.prereport.dto.response.PreReportStepStatusR
 import com.tbcpl.workforce.operation.prereport.dto.response.StepStatusDetail;
 import com.tbcpl.workforce.operation.prereport.entity.enums.StepStatus;
 import com.tbcpl.workforce.operation.prereport.repository.PreReportStepTrackingRepository;
+import com.tbcpl.workforce.auth.entity.Employee;  // ✅ ADDED
+import com.tbcpl.workforce.auth.repository.EmployeeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -44,24 +46,33 @@ public class PreReportService {
     private final PreReportClientLeadService clientLeadService;
     private final PreReportTrueBuddyLeadService trueBuddyLeadService;
     private final PreReportStepTrackingRepository stepTrackingRepository;
+    private final EmployeeRepository employeeRepository;
 
     public PreReportService(PreReportRepository preReportRepository,
                             ClientRepository clientRepository,
                             ClientProductRepository clientProductRepository,
                             @Lazy PreReportClientLeadService clientLeadService,
                             @Lazy PreReportTrueBuddyLeadService trueBuddyLeadService,
-                            PreReportStepTrackingRepository stepTrackingRepository) {
+                            PreReportStepTrackingRepository stepTrackingRepository,
+                            EmployeeRepository employeeRepository) {
         this.preReportRepository = preReportRepository;
         this.clientRepository = clientRepository;
         this.clientProductRepository = clientProductRepository;
         this.clientLeadService = clientLeadService;
         this.trueBuddyLeadService = trueBuddyLeadService;
         this.stepTrackingRepository = stepTrackingRepository;
+        this.employeeRepository = employeeRepository;
     }
 
     @Transactional
-    public PreReportResponse initializeReport(PreReportInitializeRequest request, String createdBy) {
+    public PreReportResponse initializeReport(PreReportInitializeRequest request, String empId) {
         log.info("Initializing pre-report for client: {}, leadType: {}", request.getClientId(), request.getLeadType());
+
+        // ✅ ADDED: Get employee by empId to retrieve employee ID
+        Employee employee = employeeRepository.findByEmpId(empId)
+                .orElseThrow(() -> new RuntimeException("Employee not found with empId: " + empId));
+
+        log.info("Employee found: ID={}, empId={}, name={}", employee.getId(), employee.getEmpId(), employee.getFullName());
 
         // ✅ ADDED: Validate client exists
         Client client = clientRepository.findActiveClientById(request.getClientId())
@@ -79,7 +90,7 @@ public class PreReportService {
                 .leadType(request.getLeadType())
                 .reportStatus(ReportStatus.DRAFT)
                 .currentStep(0)
-                .createdBy(createdBy)
+                .createdBy(employee.getId())
                 .isDeleted(false)
                 .build();
 
@@ -245,6 +256,8 @@ public class PreReportService {
     public PreReportResponse approveReport(String reportId) {
         log.info("Approving report: {}", reportId);
 
+
+
         PreReport preReport = preReportRepository.findByReportIdAndIsDeletedFalse(reportId)
                 .orElseThrow(() -> new RuntimeException("Pre-report not found with ID: " + reportId));
 
@@ -296,7 +309,7 @@ public class PreReportService {
             throw new RuntimeException("Report can only be rejected when status is WAITING_FOR_APPROVAL");
         }
 
-        preReport.setReportStatus(ReportStatus.REJECTED_BY_CLIENT);
+        preReport.setReportStatus(ReportStatus.DISAPPROVED_BY_CLIENT);
         preReport.setRejectionReason(request.getRejectionReason());
         preReport.setUpdatedAt(LocalDateTime.now());
 
