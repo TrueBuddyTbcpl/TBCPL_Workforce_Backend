@@ -102,15 +102,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     /**
      * Find employees with password expiring soon (within X days)
      */
-    @Query(value = "SELECT e.* FROM employee e WHERE e.last_password_change_date IS NOT NULL " +
-            "AND (CURRENT_DATE - e.last_password_change_date) >= :warningDays " +
-            "AND (CURRENT_DATE - e.last_password_change_date) < :expiryDays " +
-            "AND e.is_active = true", nativeQuery = true)
-    Page<Employee> findEmployeesWithPasswordExpiringSoon(@Param("warningDays") int warningDays,
-                                                         @Param("expiryDays") int expiryDays,
-                                                         Pageable pageable);
-
-
+    @Query("SELECT e FROM Employee e WHERE " +
+            "e.lastPasswordChangeDate IS NOT NULL AND " +
+            "DATEDIFF(CURRENT_DATE, e.lastPasswordChangeDate) >= :warningDays AND " +
+            "DATEDIFF(CURRENT_DATE, e.lastPasswordChangeDate) < :expiryDays AND " +
+            "e.isActive = true")
+    Page<Employee> findEmployeesWithPasswordExpiringSoon(
+            @Param("warningDays") int warningDays,
+            @Param("expiryDays") int expiryDays,
+            Pageable pageable
+    );
 
     /**
      * Count active employees
