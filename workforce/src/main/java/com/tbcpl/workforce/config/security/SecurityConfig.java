@@ -142,12 +142,9 @@ public class SecurityConfig {
 
         // Allow frontend origins (development and production)
         configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:5173",      // Vite (React/Vue) default
-                "http://localhost:3000",      // Create React App default
-                "http://localhost:4200",      // Angular default
-                "http://localhost:8081",      // Alternative port
-                "http://127.0.0.1:5173",      // Alternative localhost
-                "http://127.0.0.1:3000"       // Alternative localhost
+                "https://tbcpl-workforce.onrender.com",
+                "http://localhost:5173",      // Alternative port
+                "http://127.0.0.1:5173"    // Alternative localhost
                 // Add production URL here when deploying
                 // "https://yourproductiondomain.com"
         ));
