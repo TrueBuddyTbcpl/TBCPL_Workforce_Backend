@@ -125,5 +125,15 @@ public class AuthController {
         );
     }
 
+    @GetMapping("/validate")
+    public ResponseEntity<?> validateToken(Authentication authentication) {
+        // If this method is reached, JWT filter has already validated the token
+        if (authentication != null && authentication.isAuthenticated()) {
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+
 
 }

@@ -146,12 +146,18 @@ public class EmployeeSessionService {
         // Check if session is expired (8 hours timeout)
         if (session.isExpired()) {
             log.warn("Session expired for token");
+            // ✅ Mark as expired immediately
+            session.markAsExpired();
+            sessionRepository.save(session);
             return false;
         }
 
-        // Check if date has changed (auto-logout feature)
+        // ✅ Check if date has changed (auto-logout feature)
         if (session.isDateChanged()) {
             log.warn("Session date changed for token");
+            // ✅ Mark as expired immediately
+            session.markAsExpired();
+            sessionRepository.save(session);
             return false;
         }
 
@@ -211,6 +217,11 @@ public class EmployeeSessionService {
         int deletedCount = sessionRepository.deleteOldInactiveSessions(cutoffDate);
 
         log.info("Deleted {} old inactive sessions", deletedCount);
+    }
+
+    @Transactional
+    public EmployeeSession saveSession(EmployeeSession session) {
+        return sessionRepository.save(session);
     }
 
     /**

@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 /**
  * Service class for Authentication
@@ -74,6 +75,8 @@ public class AuthService {
             throw new InvalidCredentialsException("Your account is inactive. Please contact HR.");
         }
 
+        cleanupExpiredSessionsForEmployee(employee.getId());
+
         // Check if employee already has active session (multi-device prevention)
         if (sessionService.hasActiveSession(employee.getId())) {
             log.warn("Multi-device login attempt for employee: {}", employee.getEmpId());
@@ -123,6 +126,30 @@ public class AuthService {
         }
 
         return response;
+    }
+
+    @Transactional
+    private void cleanupExpiredSessionsForEmployee(Long employeeId) {
+        log.debug("Checking for expired sessions for employee ID: {}", employeeId);
+
+        Optional<EmployeeSession> sessionOpt = sessionService.getActiveSession(employeeId);
+
+        if (sessionOpt.isPresent()) {
+            EmployeeSession session = sessionOpt.get();
+
+            // Check if expired by timeout (8 hours)
+            if (session.isExpired()) {
+                log.info("Found expired session (timeout) for employee ID: {}, marking as expired", employeeId);
+                session.markAsExpired();
+                sessionService.saveSession(session); // You'll need to add this method
+            }
+            // Check if expired by date change
+            else if (session.isDateChanged()) {
+                log.info("Found expired session (date changed) for employee ID: {}, marking as expired", employeeId);
+                session.markAsExpired();
+                sessionService.saveSession(session); // You'll need to add this method
+            }
+        }
     }
 
     /**
