@@ -1,0 +1,47 @@
+services:
+  mysqldb:
+    image: mysql:8.0.35
+    container_name: tbcpl-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: tbcpl_workforce_db
+      MYSQL_USER: tbcpl_user
+      MYSQL_PASSWORD: tbcpl_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - tbcpl-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tbcpl-workforce-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysqldb:3306/tbcpl_workforce_db?useSSL=false&serverTimezone=Asia/Kolkata&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: tbcpl_user
+      SPRING_DATASOURCE_PASSWORD: tbcpl_password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    networks:
+      - tbcpl-network
+
+networks:
+  tbcpl-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

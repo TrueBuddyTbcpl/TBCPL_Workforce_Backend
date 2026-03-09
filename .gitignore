@@ -1,0 +1,16 @@
+
+src/main/resources/application.properties
+src/main/resources/application-local.properties
+src/main/resources/application-prod.properties
+
+src/main/resources/application.properties
+src/main/resources/application-local.properties
+src/main/resources/application-prod.properties
+
+src/main/resources/application.properties
+
+src/main/resources/application-local.properties
+
+src/main/resources/application-prod.properties
+
+workforce/src/main/resources/application.properties

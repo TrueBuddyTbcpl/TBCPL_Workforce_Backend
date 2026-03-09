@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="4">
+  <component name="AdditionalModuleElements">
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/workforce/.github/java-upgrade/20260115081251" />
+      <excludeFolder url="file://$MODULE_DIR$/workforce/.github/java-upgrade/20260115081304" />
+      <excludeFolder url="file://$MODULE_DIR$/workforce/.github/java-upgrade/20260115081529" />
+      <excludeFolder url="file://$MODULE_DIR$/workforce/.github/java-upgrade/20260115081537" />
+      <excludeFolder url="file://$MODULE_DIR$/workforce/.github/java-upgrade/20260115081541" />
+      <excludeFolder url="file://$MODULE_DIR$/workforce/.vscode" />
+    </content>
+  </component>
+</module>
