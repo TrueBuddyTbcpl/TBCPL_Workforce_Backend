@@ -6,6 +6,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class AddCaseUpdateRequest {
-    private String status;
     private String description;
 }
