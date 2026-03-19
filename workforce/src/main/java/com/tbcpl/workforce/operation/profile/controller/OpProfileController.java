@@ -60,22 +60,7 @@ public class OpProfileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 2 — PHYSICAL ATTRIBUTES
-    // PUT /api/v1/operation/profiles/{profileId}/physical-attributes
-    // ─────────────────────────────────────────────────────────────────────────
 
-    @PutMapping("/{profileId}/physical-attributes")
-    public ResponseEntity<ProfileDetailResponse> savePhysicalAttributes(
-            @PathVariable Long profileId,
-            @Valid @RequestBody PhysicalAttributesRequest request,
-            Authentication authentication) {
-
-        String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/physical-attributes - empId: {}", profileId, empId);
-        ProfileDetailResponse response = profileService.savePhysicalAttributes(profileId, request, empId);
-        return ResponseEntity.ok(response);
-    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // STEP 3 — ADDRESS

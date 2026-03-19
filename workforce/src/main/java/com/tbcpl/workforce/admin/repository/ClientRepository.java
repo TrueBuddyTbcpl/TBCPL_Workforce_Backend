@@ -17,6 +17,9 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
     @Query("SELECT c FROM Client c WHERE c.clientId = :id AND c.deleted = false")
     Optional<Client> findActiveClientById(@Param("id") Long id);
+    Optional<Client> findByClientIdAndDeletedFalse(Long clientId);
+
+    List<Client> findAllByDeletedFalseOrderByClientNameAsc();
 
     boolean existsByClientNameAndDeletedFalse(String clientName);
 }

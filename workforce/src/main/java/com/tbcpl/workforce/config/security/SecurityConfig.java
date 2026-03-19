@@ -131,7 +131,56 @@ public class SecurityConfig {
                         // Admin module - ADMIN only
                         .requestMatchers("/api/v1/admin/**").hasAuthority("DEPARTMENT_ADMIN")
 
-                        // ============================================
+
+                                // ── LOA Assets ─────────────────────────────────────────────────────────────
+                                .requestMatchers(HttpMethod.GET,
+                                        "/api/v1/grnd-operation/loa/assets")
+                                .authenticated()
+
+                                .requestMatchers(HttpMethod.POST,
+                                        "/api/v1/grnd-operation/loa/assets/**")
+                                .hasAuthority("DEPARTMENT_ADMIN")
+
+                                .requestMatchers(HttpMethod.DELETE,
+                                        "/api/v1/grnd-operation/loa/assets/**")
+                                .hasAuthority("DEPARTMENT_ADMIN")
+
+
+                                // ============================================================
+// GRND-OPERATION MODULE — LOA ENDPOINTS
+// ============================================================
+
+// PDF Preview — all authenticated users
+                                .requestMatchers(HttpMethod.GET,
+                                        "/api/v1/grnd-operation/loa/*/preview").authenticated()
+
+// Send Mail — Admin OR Operation dept (fine-grained role check inside service)
+                                .requestMatchers(HttpMethod.POST,
+                                        "/api/v1/grnd-operation/loa/*/send-mail")
+                                .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_OPERATION")
+
+// Dropdowns — Admin dept (role check inside service)
+                                .requestMatchers(HttpMethod.GET,
+                                        "/api/v1/grnd-operation/loa/dropdown/**")
+                                .hasAuthority("DEPARTMENT_ADMIN")
+
+// Create LOA — Admin dept (role check inside service)
+                                .requestMatchers(HttpMethod.POST,
+                                        "/api/v1/grnd-operation/loa")
+                                .hasAuthority("DEPARTMENT_ADMIN")
+
+// Update / Finalize — Admin dept (role check inside service)
+                                .requestMatchers(HttpMethod.PUT,
+                                        "/api/v1/grnd-operation/loa/**")
+                                .hasAuthority("DEPARTMENT_ADMIN")
+
+// List / Get single — Admin + Operation can view
+                                .requestMatchers(HttpMethod.GET,
+                                        "/api/v1/grnd-operation/loa/**")
+                                .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_OPERATION")
+
+
+                                // ============================================
                         // DEFAULT: All other requests must be authenticated
                         // ============================================
                         .anyRequest().authenticated()
@@ -158,6 +207,8 @@ public class SecurityConfig {
 
         // Allow frontend origins (development and production)
         configuration.setAllowedOrigins(Arrays.asList(
+                "https://tbcontrolcenter.com",          // ✅ ADD THIS
+                "https://www.tbcontrolcenter.com",
                 "https://tbcpl-workforce.onrender.com",
                 "http://localhost",           // ← ADD: frontend on port 80
                 "http://localhost:3000",      // ← ADD: common React dev port

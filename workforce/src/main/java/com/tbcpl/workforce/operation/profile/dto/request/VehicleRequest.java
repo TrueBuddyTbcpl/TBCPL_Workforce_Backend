@@ -8,5 +8,5 @@ public class VehicleRequest {
     private String make;
     private String model;
     private String registrationNumber;
-    private VehicleOwnershipType ownershipType;
+    private String ownershipType;
 }

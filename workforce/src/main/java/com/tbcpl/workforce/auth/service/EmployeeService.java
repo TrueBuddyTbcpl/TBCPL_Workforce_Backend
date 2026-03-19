@@ -10,7 +10,8 @@ import com.tbcpl.workforce.common.constants.ValidationMessages;
 import com.tbcpl.workforce.common.enums.RoleType;
 import com.tbcpl.workforce.common.exception.DuplicateResourceException;
 import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
-import com.tbcpl.workforce.common.util.CloudinaryService;
+
+import com.tbcpl.workforce.common.util.S3Service;
 import com.tbcpl.workforce.common.util.EmailValidator;
 import com.tbcpl.workforce.common.util.EmpIdGenerator;
 import com.tbcpl.workforce.common.util.PasswordValidator;
@@ -24,6 +25,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.tbcpl.workforce.auth.dto.request.EmployeeUpdateRequest;
+
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -46,7 +49,7 @@ public class EmployeeService {
     private final PasswordValidator        passwordValidator;
     private final EmailValidator           emailValidator;
     private final EmpIdGenerator           empIdGenerator;
-    private final CloudinaryService        cloudinaryService;
+    private final S3Service s3Service;
     private final EmailVerificationService emailVerificationService;
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -239,14 +242,54 @@ public class EmployeeService {
     }
 
     @Transactional
-    public void updateEmployee(Long employeeId, String password, String updatedBy) {
-        Employee employee = findById(employeeId);
-        if (password != null) {
-            employee.setPassword(password);
-            employee.setLastPasswordChangeDate(LocalDate.now());
+    public EmployeeResponse updateEmployee(Long id, EmployeeUpdateRequest request, String updatedBy) {
+        log.info("Updating employee ID: {} by: {}", id, updatedBy);
+
+        Employee employee = findById(id);
+
+        // ── Name fields (only update if provided) ────────────────────────────
+        if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
+            employee.setFirstName(request.getFirstName().trim());
         }
-        employeeRepository.save(employee);
+        if (request.getLastName() != null && !request.getLastName().isBlank()) {
+            employee.setLastName(request.getLastName().trim());
+        }
+        if (request.getMiddleName() != null) {
+            employee.setMiddleName(request.getMiddleName().trim());
+        }
+
+        // ── Email (check duplicate before updating) ───────────────────────────
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String newEmail = request.getEmail().trim().toLowerCase();
+            if (!newEmail.equals(employee.getEmail()) &&
+                    employeeRepository.existsByEmailIgnoreCase(newEmail)) {
+                throw new DuplicateResourceException("Email already exists: " + newEmail);
+            }
+            employee.setEmail(newEmail);
+        }
+
+        // ── Department ────────────────────────────────────────────────────────
+        if (request.getDepartmentId() != null) {
+            Department department = departmentService.getDepartmentEntityById(request.getDepartmentId());
+            employee.setDepartment(department);
+        }
+
+        // ── Role ──────────────────────────────────────────────────────────────
+        if (request.getRoleId() != null) {
+            Role role = roleService.getRoleEntityById(request.getRoleId());
+            employee.setRole(role);
+        }
+
+        // ── Active status ─────────────────────────────────────────────────────
+        if (request.getIsActive() != null) {
+            employee.setIsActive(request.getIsActive());
+        }
+
+        Employee saved = employeeRepository.save(employee);
+        log.info("Employee ID: {} updated successfully by: {}", id, updatedBy);
+        return mapToResponse(saved);
     }
+
 
     @Transactional
     public void markEmailAsVerified(Long employeeId) {
@@ -264,21 +307,24 @@ public class EmployeeService {
 
         if (employee.getProfilePhotoPublicId() != null) {
             try {
-                cloudinaryService.deleteFile(employee.getProfilePhotoPublicId());
+                s3Service.deleteFile(employee.getProfilePhotoPublicId());
             } catch (Exception e) {
                 log.warn("Failed to delete old profile photo: {}",
                         employee.getProfilePhotoPublicId(), e);
             }
         }
 
-        Map<String, String> result = cloudinaryService.uploadFile(file, "profile-photos");
+        Map<String, String> result = s3Service.uploadFile(file, "profile-photos");
         employee.setProfilePhotoUrl(result.get("url"));
-        employee.setProfilePhotoPublicId(result.get("public_id"));
+        employee.setProfilePhotoPublicId(result.get("key"));
 
         Employee saved = employeeRepository.save(employee);
         log.info("Profile photo uploaded for employee: {}", employee.getEmpId());
         return mapToResponse(saved);
     }
+
+
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // DELETE (soft)

@@ -59,8 +59,6 @@ public class OpProfile {
     @OneToOne(mappedBy = "profile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private OpProfilePersonalInfo personalInfo;
 
-    @OneToOne(mappedBy = "profile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private OpProfilePhysicalAttributes physicalAttributes;
 
     @OneToOne(mappedBy = "profile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private OpProfileAddress address;

@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,4 +21,5 @@ public class TrueBuddyLeadStep6Request {
     private YesNo riskImmediateAction;
     private YesNo riskControlledValidation;
     private RiskLevel riskPrematureDisclosure;
+    private List<CustomRiskEntry> riskCustomData;
 }

@@ -12,7 +12,8 @@ public enum RoleType {
     ADMIN("Admin"),
     MANAGER("Manager"),
     HR_MANAGER("HR Manager"),
-    ASSOCIATE("Associate");
+    ASSOCIATE("Associate"),
+    FIELD_ASSOCIATE("Field Associate");
 
     private final String displayName;
 
@@ -41,14 +42,14 @@ public enum RoleType {
      * Roles that ADMIN can assign (excludes SUPER_ADMIN)
      */
     public static java.util.List<RoleType> getAdminAssignableRoles() {
-        return java.util.List.of(ADMIN, MANAGER, HR_MANAGER, ASSOCIATE);
+        return java.util.List.of(ADMIN, MANAGER, HR_MANAGER, ASSOCIATE, FIELD_ASSOCIATE);
     }
 
     /**
      * Roles that SUPER_ADMIN can assign (all roles)
      */
     public static java.util.List<RoleType> getSuperAdminAssignableRoles() {
-        return java.util.List.of(SUPER_ADMIN, ADMIN, MANAGER, HR_MANAGER, ASSOCIATE);
+        return java.util.List.of(SUPER_ADMIN, ADMIN, MANAGER, HR_MANAGER, ASSOCIATE, FIELD_ASSOCIATE);
     }
 
     /** Parse from DB string value (case-insensitive) */

@@ -19,7 +19,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
+import jakarta.servlet.http.HttpServletResponse;
+import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
+import org.springframework.beans.factory.annotation.Value;
+import java.io.IOException;
 /**
  * Controller for Authentication endpoints
  */
@@ -32,6 +35,8 @@ public class AuthController {
     private final AuthService              authService;
     private final EmployeeService          employeeService;
     private final EmailVerificationService emailVerificationService;
+    @Value("${app.base-url}")
+    private String appBaseUrl;
 
     /**
      * POST /api/v1/auth/login
@@ -105,17 +110,40 @@ public class AuthController {
     /**
      * GET /api/v1/auth/verify-email?token=...
      * PUBLIC — no JWT required
+     * Redirects to frontend verify-email page with ?status= param
      */
     @GetMapping(ApiEndpoints.AUTH_VERIFY_EMAIL)
-    public ResponseEntity<ApiResponse<String>> verifyEmail(
-            @RequestParam("token") String token
-    ) {
-        log.info("Email verification attempt");
-        emailVerificationService.verifyToken(token, employeeService);
-        return ResponseEntity.ok(
-                ApiResponse.success(
-                        "Email verified successfully! Please login to access your dashboard.", null));
+    public void verifyEmail(
+            @RequestParam("token") String token,
+            HttpServletResponse response
+    ) throws IOException {
+
+        String frontendBase = appBaseUrl + "/auth/verify-email";
+
+        try {
+            emailVerificationService.verifyToken(token, employeeService);
+            log.info("✅ Email verified successfully, redirecting to frontend");
+            response.sendRedirect(frontendBase + "?status=success");
+
+        } catch (ResourceNotFoundException ex) {
+            String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+
+            String status;
+            if (msg.contains("expired")) {
+                status = "expired";
+            } else if (msg.contains("already")) {
+                status = "already-used";
+            } else if (msg.contains("invalid") || msg.contains("not found")) {
+                status = "invalid";
+            } else {
+                status = "error";
+            }
+
+            log.warn("⚠️ Email verification failed — status: {}, reason: {}", status, ex.getMessage());
+            response.sendRedirect(frontendBase + "?status=" + status);
+        }
     }
+
 
     /**
      * POST /api/v1/auth/resend-verification/{empId}
@@ -139,7 +167,7 @@ public class AuthController {
      *         resolves the Employee internally — emailVerificationService.resendVerificationEmail
      *         accepts Employee, NOT String.
      * FIX 2: request.getEmail() — ResendVerificationRequest is a POJO, not a record.
-     * FIX 3: ApiResponse.success requires two arguments (message, data).
+     * FIX 3: ApiResponse requires two arguments (message, data).
      */
     @PostMapping("/resend-verification")
     public ResponseEntity<ApiResponse<Void>> resendVerificationEmail(

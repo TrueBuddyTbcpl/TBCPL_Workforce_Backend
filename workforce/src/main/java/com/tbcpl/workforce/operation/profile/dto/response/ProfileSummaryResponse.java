@@ -25,6 +25,6 @@ public class ProfileSummaryResponse {
     private String updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private long completedSteps;
+    private long COMPLETEDSteps;
     private long totalSteps;
 }

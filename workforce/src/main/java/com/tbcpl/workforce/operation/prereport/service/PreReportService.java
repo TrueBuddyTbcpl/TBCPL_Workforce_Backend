@@ -370,7 +370,7 @@ public class PreReportService {
     }
 
     @Transactional
-    public void markStepAsCompleted(Long prereportId, int stepNumber) {
+    public void markStepAsCOMPLETED(Long prereportId, int stepNumber) {
         log.info("Marking step {} as COMPLETED for prereportId: {}", stepNumber, prereportId);
 
         PreReportStepTracking tracking = stepTrackingRepository

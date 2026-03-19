@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,4 +24,5 @@ public class TrueBuddyLeadStep4Request {
     private String verificationJurisdictionNotes;
     private VerificationStatus verificationRiskAssessment;
     private String verificationRiskAssessmentNotes;
+    private List<CustomVerificationEntry> verificationCustomData;
 }

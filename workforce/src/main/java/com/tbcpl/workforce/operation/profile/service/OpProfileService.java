@@ -10,9 +10,6 @@ public interface OpProfileService {
 
     // Step 1 — Init profile
     ProfileDetailResponse initProfile(ProfileInitRequest request, String empId);
-
-    // Steps 2–16
-    ProfileDetailResponse savePhysicalAttributes(Long profileId, PhysicalAttributesRequest request, String empId);
     ProfileDetailResponse saveAddress(Long profileId, AddressRequest request, String empId);
     ProfileDetailResponse saveContactInfo(Long profileId, ContactInfoRequest request, String empId);
     ProfileDetailResponse saveIdentificationDocs(Long profileId, IdentificationDocsRequest request, String empId);

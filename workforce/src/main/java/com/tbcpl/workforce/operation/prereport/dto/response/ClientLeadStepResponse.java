@@ -22,8 +22,6 @@ public class ClientLeadStepResponse {
 
     // Step 1
     private LocalDate dateInfoReceived;
-    private String clientSpocName;
-    private String clientSpocContact;
 
     // Step 2
     private Boolean scopeDueDiligence;

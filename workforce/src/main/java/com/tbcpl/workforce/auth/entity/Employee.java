@@ -40,7 +40,7 @@ public class Employee {
     @Column(name = "first_name", nullable = false, length = 50)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false, length = 50)
+    @Column(name = "last_name", nullable = true, length = 50)  // ← nullable = true
     private String lastName;
 
     @Column(name = "middle_name", length = 50)

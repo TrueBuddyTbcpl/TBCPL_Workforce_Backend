@@ -7,7 +7,8 @@ import com.tbcpl.workforce.admin.repository.ClientRepository;
 import com.tbcpl.workforce.common.exception.DuplicateResourceException;
 import com.tbcpl.workforce.common.exception.InvalidFileException;
 import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
-import com.tbcpl.workforce.common.util.CloudinaryService;
+
+import com.tbcpl.workforce.common.util.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ import java.util.stream.Collectors;
 public class ClientService {
 
     private final ClientRepository clientRepository;
-    private final CloudinaryService cloudinaryService;
+    private final S3Service s3Service;
 
     public ClientResponseDTO createClient(ClientRequestDTO requestDTO) {
         log.info("Creating new client: {}", requestDTO.getClientName());
@@ -66,7 +67,7 @@ public class ClientService {
         }
 
         // ── Upload to Cloudinary ──────────────────────────────────────────
-        Map<String, String> uploaded = cloudinaryService.uploadFile(
+        Map<String, String> uploaded = s3Service.uploadFile(
                 file, "clients/logos"
         );
 

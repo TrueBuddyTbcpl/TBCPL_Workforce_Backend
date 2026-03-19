@@ -3,7 +3,8 @@ package com.tbcpl.workforce.operation.cases.service;
 import com.tbcpl.workforce.admin.entity.ClientProduct;
 import com.tbcpl.workforce.admin.repository.ClientProductRepository;
 import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
-import com.tbcpl.workforce.common.util.CloudinaryService;
+
+import com.tbcpl.workforce.common.util.S3Service;
 import com.tbcpl.workforce.operation.cases.dto.request.AddCaseUpdateRequest;
 import com.tbcpl.workforce.operation.cases.dto.request.CreateCaseRequest;
 import com.tbcpl.workforce.operation.cases.dto.request.LinkProfileRequest;
@@ -58,7 +59,7 @@ public class CaseServiceImpl implements CaseService {
     private final ClientProductRepository clientProductRepository;
     private final CaseUpdateRepository caseUpdateRepository;
     private final CaseDocumentRepository caseDocumentRepository;
-    private final CloudinaryService cloudinaryService;
+    private final S3Service s3Service;
     private final EmployeeRepository employeeRepository;
     private final PreReportService preReportService;
     private final CaseLinkedProfileRepository linkedProfileRepository;
@@ -73,7 +74,7 @@ public class CaseServiceImpl implements CaseService {
             ClientProductRepository clientProductRepository,
             CaseUpdateRepository caseUpdateRepository,
             CaseDocumentRepository caseDocumentRepository,  // ✅ ADD
-            CloudinaryService cloudinaryService,
+            S3Service s3Service,
             EmployeeRepository employeeRepository,
             PreReportService preReportService,
             CaseLinkedProfileRepository linkedProfileRepository
@@ -86,7 +87,7 @@ public class CaseServiceImpl implements CaseService {
         this.clientProductRepository = clientProductRepository;
         this.caseUpdateRepository = caseUpdateRepository;
         this.caseDocumentRepository   = caseDocumentRepository;  // ✅ ADD
-        this.cloudinaryService        = cloudinaryService;
+        this.s3Service        = s3Service;
         this.employeeRepository       = employeeRepository;
         this.preReportService = preReportService;
         this.linkedProfileRepository = linkedProfileRepository;
@@ -171,7 +172,6 @@ public class CaseServiceImpl implements CaseService {
                 .caseEntity(newCase)
                 .updateDate(LocalDateTime.now())
                 .updatedBy(createdBy)
-                .status("open")
                 .description("Case created from PreReport: " + preReport.getReportId())
                 .build();
 
@@ -202,7 +202,6 @@ public class CaseServiceImpl implements CaseService {
                 .caseEntity(caseEntity)
                 .updateDate(LocalDateTime.now())
                 .updatedBy(updatedBy)
-                .status(request.getStatus())
                 .description(request.getDescription())
                 .build();
 
@@ -271,7 +270,7 @@ public class CaseServiceImpl implements CaseService {
                 .orElseThrow(() -> new EntityNotFoundException("Case not found: " + caseId));
 
         try {
-            Map<String, String> uploadResult = cloudinaryService.uploadFile(
+            Map<String, String> uploadResult = s3Service.uploadFile(
                     file, "cases/" + caseEntity.getCaseNumber()
             );
 
@@ -280,7 +279,7 @@ public class CaseServiceImpl implements CaseService {
                     .fileName(uploadResult.get("file_name"))
                     .originalName(file.getOriginalFilename())
                     .fileUrl(uploadResult.get("url"))
-                    .publicId(uploadResult.get("public_id"))
+                    .publicId(uploadResult.get("key"))
                     .fileType(file.getContentType())
                     .fileSize(file.getSize())
                     .uploadedBy(uploadedBy)
@@ -306,14 +305,9 @@ public class CaseServiceImpl implements CaseService {
             throw new IllegalArgumentException("Document does not belong to this case");
         }
 
-        try {
-            cloudinaryService.deleteFile(document.getPublicId());
-            caseDocumentRepository.delete(document);
-            log.info("Document {} deleted from case {} by {}", documentId, caseId, requestedBy);
-        } catch (IOException e) {
-            log.error("Failed to delete document {}: {}", documentId, e.getMessage());
-            throw new RuntimeException("Failed to delete document: " + e.getMessage());
-        }
+        s3Service.deleteFile(document.getPublicId());
+        caseDocumentRepository.delete(document);
+        log.info("Document {} deleted from case {} by {}", documentId, caseId, requestedBy);
     }
 
     @Override
@@ -428,8 +422,6 @@ public class CaseServiceImpl implements CaseService {
 
     private void mapClientLeadData(Case newCase, Long prereportId) {
         clientLeadRepository.findByPrereportId(prereportId).ifPresent(cl -> {
-            newCase.setClientSpocName(cl.getClientSpocName());
-            newCase.setClientSpocContact(cl.getClientSpocContact());
             newCase.setScopeDueDiligence(cl.getScopeDueDiligence());
             newCase.setScopeIprRetailer(cl.getScopeIprRetailer());
             newCase.setScopeIprSupplier(cl.getScopeIprSupplier());
@@ -634,7 +626,6 @@ public class CaseServiceImpl implements CaseService {
                         .id(u.getId())
                         .updateDate(u.getUpdateDate())
                         .updatedBy(u.getUpdatedBy())
-                        .status(u.getStatus())
                         .description(u.getDescription())
                         .build())
                 .collect(Collectors.toList());

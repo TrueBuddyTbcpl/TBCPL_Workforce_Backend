@@ -48,6 +48,7 @@ public final class ApiEndpoints {
     public static final String LOGIN_ATTEMPT_BY_ID    = "/login-attempts/{id}";
     public static final String LOGIN_ATTEMPTS_BLOCKED    = "/login-attempts/blocked";
     public static final String LOGIN_ATTEMPTS_BY_EMPLOYEE = "/login-attempts/employee/{empId}";
+    public static final String EMPLOYEE_UPDATE    = "/employees/{id}";
 
     public static final String PASSWORD_BASE          = "/password";
     public static final String PASSWORD_CHANGE        = "/password/change";

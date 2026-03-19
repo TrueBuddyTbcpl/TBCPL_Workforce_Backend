@@ -49,7 +49,7 @@ public class DataSeeder {
             seedAdminUser();
 
             log.info("==============================================");
-            log.info("Data seeding completed successfully!");
+            log.info("Data seeding COMPLETED successfully!");
             log.info("==============================================");
         };
     }

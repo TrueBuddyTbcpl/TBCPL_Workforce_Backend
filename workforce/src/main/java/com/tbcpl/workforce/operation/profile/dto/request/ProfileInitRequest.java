@@ -16,8 +16,7 @@ public class ProfileInitRequest {
     @Size(max = 100, message = "Middle name must not exceed 100 characters")
     private String middleName;
 
-    @NotBlank(message = "Last name is mandatory")
-    @Size(min = 2, max = 100, message = "Last name must be between 2 and 100 characters")
+    @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastName;
 
     @NotNull(message = "Gender is mandatory")

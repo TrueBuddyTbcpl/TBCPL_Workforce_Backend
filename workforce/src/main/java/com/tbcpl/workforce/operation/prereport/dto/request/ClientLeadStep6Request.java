@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,4 +22,5 @@ public class ClientLeadStep6Request {
     private YesNo qaIndependentInvestigation;
     private YesNo qaPriorConfrontation;
     private RiskLevel qaContaminationRisk;
+    private List<CustomRiskEntry> riskCustomData;
 }

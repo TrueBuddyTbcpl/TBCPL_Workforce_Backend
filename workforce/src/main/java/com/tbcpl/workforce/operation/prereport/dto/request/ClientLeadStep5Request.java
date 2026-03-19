@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -16,4 +18,5 @@ public class ClientLeadStep5Request {
     private String obsProductVisibility;
     private String obsCounterfeitingIndications;
     private String obsEvidentiary_gaps;
+    private List<CustomObservationEntry> observationsCustomData;
 }

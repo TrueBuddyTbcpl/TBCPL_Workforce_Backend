@@ -26,7 +26,6 @@ public class ProfileDetailResponse {
 
     // All steps
     private PersonalInfoResponse personalInfo;
-    private PhysicalAttributesResponse physicalAttributes;
     private AddressResponse address;
     private ContactInfoResponse contactInfo;
     private IdentificationDocsResponse identificationDocs;

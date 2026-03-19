@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,4 +22,5 @@ public class TrueBuddyLeadStep5Request {
     private BrandExposure obsBrandExposure;
     private RiskLevel obsEnforcementSensitivity;
     private RiskLevel obsLeakageRisk;
+    private List<CustomObservationEntry> observationsCustomData;
 }

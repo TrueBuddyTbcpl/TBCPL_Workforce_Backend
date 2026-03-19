@@ -33,8 +33,8 @@ public class PreReportStepTracking {
     @Builder.Default
     private StepStatus status = StepStatus.PENDING;
 
-    @Column(name = "completed_at")
-    private LocalDateTime completedAt;
+    @Column(name = "COMPLETED_at")
+    private LocalDateTime COMPLETEDAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
@@ -43,8 +43,8 @@ public class PreReportStepTracking {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-        if (status == StepStatus.COMPLETED && completedAt == null) {
-            completedAt = LocalDateTime.now();
+        if (status == StepStatus.COMPLETED && COMPLETEDAt == null) {
+            COMPLETEDAt = LocalDateTime.now();
         }
     }
 }

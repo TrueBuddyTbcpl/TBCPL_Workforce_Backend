@@ -278,7 +278,7 @@ public class Case {
     private String obsLeakageRisk;
 
     // ── QA — Client Lead ───────────────────────────────────────────────
-    @Column(name = "qa_completeness", length = 50)
+    @Column(name = "qa_Completeness", length = 50)
     private String qaCompleteness;
 
     @Column(name = "qa_accuracy", length = 50)

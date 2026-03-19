@@ -31,8 +31,6 @@ public class CaseUpdate {
     @Column(name = "updated_by", nullable = false, length = 100)
     private String updatedBy;
 
-    @Column(name = "status", length = 30)
-    private String status;
 
     @Column(name = "description", columnDefinition = "LONGTEXT")
     private String description;

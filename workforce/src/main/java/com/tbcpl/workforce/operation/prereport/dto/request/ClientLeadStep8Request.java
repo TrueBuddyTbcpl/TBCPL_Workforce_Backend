@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,4 +19,5 @@ public class ClientLeadStep8Request {
     private Boolean recEnforcementAction;
     private Boolean recAdditionalInfo;
     private Boolean recClosureHold;
+    private List<Long> recCustomIds;
 }

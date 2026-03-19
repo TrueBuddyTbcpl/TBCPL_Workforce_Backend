@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,4 +24,5 @@ public class ClientLeadStep4Request {
     private String verificationPretextCallingNotes;
     private VerificationStatus verificationProductReview;
     private String verificationProductReviewNotes;
+    private List<CustomVerificationEntry> verificationCustomData;
 }

@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tbcpl.workforce.admin.entity.Client;
 import com.tbcpl.workforce.admin.repository.ClientRepository;
 import com.tbcpl.workforce.common.exception.BusinessException;
-import com.tbcpl.workforce.common.util.CloudinaryService;
+
+import com.tbcpl.workforce.common.util.S3Service;
 import com.tbcpl.workforce.operation.cases.entity.Case;
 import com.tbcpl.workforce.operation.cases.repository.CaseRepository;
 import com.tbcpl.workforce.operation.finalreport.dto.request.CreateFinalReportRequest;
@@ -44,20 +45,20 @@ public class FinalReportServiceImpl implements FinalReportService {
     private final FinalReportRepository finalReportRepository;
     private final CaseRepository        caseRepository;
     private final ClientRepository      clientRepository;
-    private final CloudinaryService     cloudinaryService;
+    private final S3Service s3Service;
     private final ObjectMapper          objectMapper;
 
     public FinalReportServiceImpl(
             FinalReportRepository finalReportRepository,
             CaseRepository caseRepository,
             ClientRepository clientRepository,
-            CloudinaryService cloudinaryService,
+            S3Service s3Service,
             ObjectMapper objectMapper
     ) {
         this.finalReportRepository = finalReportRepository;
         this.caseRepository        = caseRepository;
         this.clientRepository      = clientRepository;
-        this.cloudinaryService     = cloudinaryService;
+        this.s3Service     = s3Service;
         this.objectMapper          = objectMapper;
     }
 
@@ -125,7 +126,7 @@ public class FinalReportServiceImpl implements FinalReportService {
                 }
 
                 // ── Upload to Cloudinary ──────────────────────────────────
-                Map<String, String> uploaded = cloudinaryService.uploadFile(
+                Map<String, String> uploaded = s3Service.uploadFile(
                         file,
                         "finalreports/" + caseEntity.getCaseNumber() + "/sections"
                 );
@@ -134,7 +135,7 @@ public class FinalReportServiceImpl implements FinalReportService {
                         .index(i)
                         .originalName(originalName)
                         .url(uploaded.get("url"))
-                        .publicId(uploaded.get("public_id"))
+                        .publicId(uploaded.get("key"))
                         .success(true)
                         .build());
 

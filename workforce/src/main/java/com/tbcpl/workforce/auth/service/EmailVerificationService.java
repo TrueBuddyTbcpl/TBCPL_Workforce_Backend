@@ -3,6 +3,7 @@ package com.tbcpl.workforce.auth.service;
 import com.tbcpl.workforce.auth.entity.Employee;
 import com.tbcpl.workforce.auth.entity.EmailVerificationToken;
 import com.tbcpl.workforce.auth.repository.EmailVerificationTokenRepository;
+import com.tbcpl.workforce.common.constants.ApiEndpoints;
 import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
@@ -48,7 +49,7 @@ public class EmailVerificationService {
         try {
             // FIX: Call through separate Spring bean — proxy applies @Transactional correctly
             String token = verificationTokenService.createAndSaveToken(employee);
-            String verificationUrl = baseUrl + "/auth/verify-email?token=" + token;
+            String verificationUrl = baseUrl + ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_VERIFY_EMAIL + "?token=" + token;
             log.info("📧 [ASYNC] Verification URL: {}", verificationUrl);
             sendVerificationMail(employee, verificationUrl);
             log.info("✅ Verification email sent to: {}", employee.getEmail());
@@ -106,6 +107,8 @@ public class EmailVerificationService {
             throws MessagingException {
 
         MimeMessage message = mailSender.createMimeMessage();
+        message.addHeader("X-Mailin-Track-Click", "0");
+        message.addHeader("X-Mailin-Track-Open", "0");
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
         try {

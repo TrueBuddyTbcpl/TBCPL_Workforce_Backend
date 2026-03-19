@@ -6,9 +6,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "prereport_truebuddy_lead")
@@ -228,6 +231,33 @@ public class PreReportTrueBuddyLead {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // ── Custom option per-report data ─────────────────────────────────────────
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "scope_custom_ids", columnDefinition = "json")
+    private List<Long> scopeCustomIds;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "verification_custom_data", columnDefinition = "json")
+    private List<com.tbcpl.workforce.operation.prereport.dto.request.CustomVerificationEntry>
+            verificationCustomData;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "rec_custom_ids", columnDefinition = "json")
+    private List<Long> recCustomIds;
+
+    // Add this alongside the other JSON columns you added earlier:
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "observations_custom_data", columnDefinition = "json")
+    private List<com.tbcpl.workforce.operation.prereport.dto.request.CustomObservationEntry>
+            observationsCustomData;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "risk_custom_data", columnDefinition = "json")
+    private List<com.tbcpl.workforce.operation.prereport.dto.request.CustomRiskEntry>
+            riskCustomData;
+
+
 
     @PrePersist
     protected void onCreate() {

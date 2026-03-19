@@ -32,12 +32,6 @@ public class PreReportClientLead {
     @Column(name = "date_info_received")
     private LocalDate dateInfoReceived;
 
-    @Column(name = "client_spoc_name")
-    private String clientSpocName;
-
-    @Column(name = "client_spoc_contact", length = 50)
-    private String clientSpocContact;
-
     // Step 2: Mandate/Scope
     @Column(name = "scope_due_diligence")
     @Builder.Default
@@ -156,6 +150,23 @@ public class PreReportClientLead {
     @Column(name = "obs_product_visibility", columnDefinition = "LONGTEXT")
     private String obsProductVisibility;
 
+    // ── Custom option per-report data ────────────────────────────────────────────
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "verification_custom_data", columnDefinition = "json")
+    private List<com.tbcpl.workforce.operation.prereport.dto.request.CustomVerificationEntry>
+            verificationCustomData;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "observations_custom_data", columnDefinition = "json")
+    private List<com.tbcpl.workforce.operation.prereport.dto.request.CustomObservationEntry>
+            observationsCustomData;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "rec_custom_ids", columnDefinition = "json")
+    private List<Long> recCustomIds;
+
+
     @Column(name = "obs_counterfeiting_indications", columnDefinition = "LONGTEXT")
     private String obsCounterfeitingIndications;
 
@@ -164,7 +175,7 @@ public class PreReportClientLead {
 
     // Step 6: Quality Assessment
     @Enumerated(EnumType.STRING)
-    @Column(name = "qa_completeness")
+    @Column(name = "qa_Completeness")
     private CompletenessLevel qaCompleteness;
 
     @Enumerated(EnumType.STRING)

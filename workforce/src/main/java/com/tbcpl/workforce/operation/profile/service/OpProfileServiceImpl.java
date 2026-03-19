@@ -3,6 +3,8 @@ package com.tbcpl.workforce.operation.profile.service;
 import com.tbcpl.workforce.auth.entity.Employee;
 import com.tbcpl.workforce.auth.service.EmployeeService;
 import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
+import com.tbcpl.workforce.common.util.EnumUtils;
+import com.tbcpl.workforce.common.util.S3Service;
 import com.tbcpl.workforce.operation.profile.dto.request.*;
 import com.tbcpl.workforce.operation.profile.dto.response.*;
 import com.tbcpl.workforce.operation.profile.entity.*;
@@ -16,7 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import com.tbcpl.workforce.common.util.CloudinaryService;
+
 
 
 
@@ -35,7 +37,6 @@ public class OpProfileServiceImpl implements OpProfileService {
 
     private final OpProfileRepository profileRepository;
     private final OpProfilePersonalInfoRepository personalInfoRepository;
-    private final OpProfilePhysicalAttributesRepository physicalAttributesRepository;
     private final OpProfileAddressRepository addressRepository;
     private final OpProfileContactInfoRepository contactInfoRepository;
     private final OpProfileIdentificationDocsRepository identificationDocsRepository;
@@ -56,9 +57,9 @@ public class OpProfileServiceImpl implements OpProfileService {
     private final OpProfileStepStatusRepository stepStatusRepository;
     private final OpProfileChangeLogRepository changeLogRepository;
     private final EmployeeService employeeService;
-    private final CloudinaryService cloudinaryService;
+    private final S3Service s3Service;
 
-    private static final int TOTAL_STEPS = 16;
+    private static final int TOTAL_STEPS = 17;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -70,14 +71,19 @@ public class OpProfileServiceImpl implements OpProfileService {
         String dept = employee.getDepartment().getDepartmentName().toUpperCase();
         String role = employee.getRole().getRoleName().toUpperCase();
 
-        boolean deptAllowed = dept.equals("ADMIN") || dept.equals("OPERATION");
-        boolean roleAllowed = role.equals("STAFF") || role.equals("ASSOCIATE");
+        // Operational access: ADMIN or OPERATION dept with STAFF or ASSOCIATE role
+        boolean operationalAccess = (dept.equals("ADMIN") || dept.equals("OPERATION"))
+                && (role.equals("STAFF") || role.equals("ASSOCIATE"));
 
-        if (!deptAllowed || !roleAllowed) {
+        // Admin override: ADMIN dept with ADMIN or SUPER_ADMIN role
+        boolean adminAccess = dept.equals("ADMIN")
+                && (role.equals("ADMIN") || role.equals("SUPER_ADMIN"));
+
+        if (!operationalAccess && !adminAccess) {
             log.warn("Access denied for empId: {} dept: {} role: {}", empId, dept, role);
             throw new AccessDeniedException(
-                    "Only ADMIN/OPERATION department employees with STAFF/ASSOCIATE role can manage profiles"
-            );
+                    "Access denied. Allowed: ADMIN/OPERATION dept with STAFF/ASSOCIATE role, " +
+                            "or ADMIN dept with ADMIN/SUPER_ADMIN role.");
         }
         return employee;
     }
@@ -123,7 +129,7 @@ public class OpProfileServiceImpl implements OpProfileService {
         OpProfilePersonalInfo personalInfo = OpProfilePersonalInfo.builder()
                 .profile(profile)
                 .firstName(request.getFirstName().trim())
-                .lastName(request.getLastName().trim())
+                .lastName(request.getLastName() != null ? request.getLastName().trim() : null)
                 .gender(request.getGender())
                 .middleName(request.getMiddleName())
                 .dateOfBirth(parseDate(request.getDateOfBirth()))
@@ -134,7 +140,6 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         personalInfoRepository.save(personalInfo);
 
-        // Initialize all 16 step statuses as NOT_FILLED
         initializeStepStatuses(profile);
 
         // Update step 1 status
@@ -148,39 +153,9 @@ public class OpProfileServiceImpl implements OpProfileService {
         return buildProfileDetailResponse(profile.getId());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 2 — PHYSICAL ATTRIBUTES
-    // ─────────────────────────────────────────────────────────────────────────
-
-    @Override
-    @Transactional
-    public ProfileDetailResponse savePhysicalAttributes(Long profileId, PhysicalAttributesRequest request, String empId) {
-        Employee employee = validateAndGetEmployee(empId);
-        OpProfile profile = getActiveProfile(profileId);
-
-        OpProfilePhysicalAttributes entity = physicalAttributesRepository
-                .findByProfileId(profileId)
-                .orElse(OpProfilePhysicalAttributes.builder().profile(profile).build());
-
-        entity.setHeight(request.getHeight());
-        entity.setWeight(request.getWeight());
-        entity.setEyeColor(request.getEyeColor());
-        entity.setHairColor(request.getHairColor());
-        entity.setSkinTone(request.getSkinTone());
-        entity.setIdentificationMarks(request.getIdentificationMarks());
-        entity.setDisabilities(request.getDisabilities());
-
-        physicalAttributesRepository.save(entity);
-        updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 2, "PHYSICAL_ATTRIBUTES", evaluatePhysicalStep(request));
-        saveChangeLog(profile, empId, employee.getFullName(), "PHYSICAL_ATTRIBUTES",
-                ChangeAction.UPDATED, "physical_attributes", null, "updated");
-
-        return buildProfileDetailResponse(profileId);
-    }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 3 — ADDRESS
+    // STEP 2 — ADDRESS
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -219,7 +194,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         addressRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 3, "ADDRESS", evaluateAddressStep(request));
+        updateStepStatus(profileId, 2, "ADDRESS", evaluateAddressStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "ADDRESS",
                 ChangeAction.UPDATED, "address", null, "updated");
 
@@ -227,7 +202,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 4 — CONTACT INFO
+    // STEP 3 — CONTACT INFO
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -250,7 +225,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         contactInfoRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 4, "CONTACT_INFO", evaluateContactStep(request));
+        updateStepStatus(profileId, 3, "CONTACT_INFO", evaluateContactStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "CONTACT_INFO",
                 ChangeAction.UPDATED, "contact_info", null, "updated");
 
@@ -258,7 +233,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 5 — IDENTIFICATION DOCS
+    // STEP 4 — IDENTIFICATION DOCS
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -286,7 +261,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         identificationDocsRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 5, "IDENTIFICATION_DOCS", evaluateIdentificationStep(request));
+        updateStepStatus(profileId, 4, "IDENTIFICATION_DOCS", evaluateIdentificationStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "IDENTIFICATION_DOCS",
                 ChangeAction.UPDATED, "identification_docs", null, "updated");
 
@@ -294,7 +269,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 6 — BUSINESS ACTIVITIES
+    // STEP 5 — BUSINESS ACTIVITIES
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -319,7 +294,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         businessActivitiesRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 6, "BUSINESS_ACTIVITIES", evaluateBusinessStep(request));
+        updateStepStatus(profileId, 5, "BUSINESS_ACTIVITIES", evaluateBusinessStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "BUSINESS_ACTIVITIES",
                 ChangeAction.UPDATED, "business_activities", null, "updated");
 
@@ -327,7 +302,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 7 — ENTITY & ORGANIZATION
+    // STEP 6 — ENTITY & ORGANIZATION
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -336,22 +311,27 @@ public class OpProfileServiceImpl implements OpProfileService {
         Employee employee = validateAndGetEmployee(empId);
         OpProfile profile = getActiveProfile(profileId);
 
-        // Delete existing and replace (clean upsert for list)
         associatedCompanyRepository.deleteByProfileId(profileId);
 
-        List<OpProfileAssociatedCompany> companies = request.getAssociatedCompanies().stream()
+        // Null-safe: treat null list same as empty list
+        List<AssociatedCompanyRequest> incoming = request.getAssociatedCompanies() != null
+                ? request.getAssociatedCompanies()
+                : new ArrayList<>();
+
+        List<OpProfileAssociatedCompany> companies = incoming.stream()
                 .filter(c -> c.getCompanyName() != null && !c.getCompanyName().isBlank())
                 .map(c -> OpProfileAssociatedCompany.builder()
                         .profile(profile)
                         .companyName(c.getCompanyName())
-                        .relationshipNature(c.getRelationshipNature())
+                        .relationshipNature(EnumUtils.parse(RelationshipNature.class, c.getRelationshipNature(), null))
+
                         .details(c.getDetails())
                         .build())
                 .toList();
 
         associatedCompanyRepository.saveAll(companies);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 7, "ENTITY_ORGANIZATION",
+        updateStepStatus(profileId, 6, "ENTITY_ORGANIZATION",
                 companies.isEmpty() ? StepStatus.NOT_FILLED : StepStatus.COMPLETED);
         saveChangeLog(profile, empId, employee.getFullName(), "ENTITY_ORGANIZATION",
                 ChangeAction.UPDATED, "associated_companies", null, companies.size() + " companies saved");
@@ -360,7 +340,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 8 — GEOGRAPHIC EXPOSURE
+    // STEP 7 — GEOGRAPHIC EXPOSURE
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -379,7 +359,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         geographicExposureRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 8, "GEOGRAPHIC_EXPOSURE", evaluateGeoStep(request));
+        updateStepStatus(profileId, 7, "GEOGRAPHIC_EXPOSURE", evaluateGeoStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "GEOGRAPHIC_EXPOSURE",
                 ChangeAction.UPDATED, "geographic_exposure", null, "updated");
 
@@ -387,7 +367,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 9 — RELATED FIRs
+    // STEP 8 — RELATED FIRs
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -398,21 +378,27 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         firRepository.deleteByProfileId(profileId);
 
-        List<OpProfileFir> firs = request.getFirs().stream()
+        // Null-safe: treat null list same as empty list
+        List<FirRequest> incoming = request.getFirs() != null
+                ? request.getFirs()
+                : new ArrayList<>();
+
+        List<OpProfileFir> firs = incoming.stream()
                 .filter(f -> f.getFirNumber() != null && !f.getFirNumber().isBlank())
                 .map(f -> OpProfileFir.builder()
                         .profile(profile)
                         .firNumber(f.getFirNumber())
                         .caseNumber(f.getCaseNumber())
-                        .sections(f.getSections())
+                        .sections(f.getSections() != null ? f.getSections() : new ArrayList<>())
                         .dateRegistered(parseDate(f.getDateRegistered()))
-                        .status(f.getStatus())
+                        .status(EnumUtils.parse(FirStatus.class, f.getStatus(), FirStatus.N_A))
+
                         .build())
                 .toList();
 
         firRepository.saveAll(firs);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 9, "RELATED_FIRS",
+        updateStepStatus(profileId, 8, "RELATED_FIRS",
                 firs.isEmpty() ? StepStatus.NOT_FILLED : StepStatus.COMPLETED);
         saveChangeLog(profile, empId, employee.getFullName(), "RELATED_FIRS",
                 ChangeAction.UPDATED, "firs", null, firs.size() + " FIRs saved");
@@ -421,7 +407,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 10 — MATERIAL SEIZED
+    // STEP 9 — MATERIAL SEIZED
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -432,7 +418,12 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         materialSeizedRepository.deleteByProfileId(profileId);
 
-        List<OpProfileMaterialSeized> items = request.getMaterialSeized().stream()
+        // Null-safe: treat null list same as empty list
+        List<MaterialSeizedItemRequest> incoming = request.getMaterialSeized() != null
+                ? request.getMaterialSeized()
+                : new ArrayList<>();
+
+        List<OpProfileMaterialSeized> items = incoming.stream()
                 .filter(m -> m.getBrandName() != null && !m.getBrandName().isBlank())
                 .map(m -> OpProfileMaterialSeized.builder()
                         .profile(profile)
@@ -440,7 +431,7 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .company(m.getCompany())
                         .quantity(m.getQuantity())
                         .location(m.getLocation())
-                        .raidingAuthority(m.getRaidingAuthority())
+                        .raidingAuthority(EnumUtils.parse(RaidingAuthority.class, m.getRaidingAuthority(), RaidingAuthority.N_A))
                         .raidingAuthorityOther(m.getRaidingAuthorityOther())
                         .dateSeized(parseDate(m.getDateSeized()))
                         .build())
@@ -448,7 +439,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         materialSeizedRepository.saveAll(items);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 10, "MATERIAL_SEIZED",
+        updateStepStatus(profileId, 9, "MATERIAL_SEIZED",
                 items.isEmpty() ? StepStatus.NOT_FILLED : StepStatus.COMPLETED);
         saveChangeLog(profile, empId, employee.getFullName(), "MATERIAL_SEIZED",
                 ChangeAction.UPDATED, "material_seized", null, items.size() + " items saved");
@@ -457,7 +448,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 11 — ASSETS (VEHICLES)
+    // STEP 10 — ASSETS (VEHICLES)
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -468,20 +459,25 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         vehicleRepository.deleteByProfileId(profileId);
 
-        List<OpProfileVehicle> vehicles = request.getVehicles().stream()
+        // Null-safe: treat null list same as empty list
+        List<VehicleRequest> incoming = request.getVehicles() != null
+                ? request.getVehicles()
+                : new ArrayList<>();
+
+        List<OpProfileVehicle> vehicles = incoming.stream()
                 .filter(v -> v.getMake() != null && !v.getMake().isBlank())
                 .map(v -> OpProfileVehicle.builder()
                         .profile(profile)
                         .make(v.getMake())
                         .model(v.getModel())
                         .registrationNumber(v.getRegistrationNumber())
-                        .ownershipType(v.getOwnershipType())
+                        .ownershipType(EnumUtils.parse(VehicleOwnershipType.class, v.getOwnershipType(), VehicleOwnershipType.N_A))
                         .build())
                 .toList();
 
         vehicleRepository.saveAll(vehicles);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 11, "ASSETS",
+        updateStepStatus(profileId, 10, "ASSETS",
                 vehicles.isEmpty() ? StepStatus.NOT_FILLED : StepStatus.COMPLETED);
         saveChangeLog(profile, empId, employee.getFullName(), "ASSETS",
                 ChangeAction.UPDATED, "vehicles", null, vehicles.size() + " vehicles saved");
@@ -490,7 +486,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 12 — KNOWN ASSOCIATES
+    // STEP 11 — KNOWN ASSOCIATES
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -499,7 +495,7 @@ public class OpProfileServiceImpl implements OpProfileService {
         Employee employee = validateAndGetEmployee(empId);
         OpProfile profile = getActiveProfile(profileId);
 
-        // Delete only ASSOCIATE/FAMILY role entries, keep EMPLOYEE
+        // Delete only non-EMPLOYEE role entries
         List<OpProfileAssociate> existing = associateRepository.findByProfileId(profileId);
         List<Long> toDelete = existing.stream()
                 .filter(a -> a.getRole() != AssociateRole.EMPLOYEE)
@@ -507,13 +503,18 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .toList();
         associateRepository.deleteAllById(toDelete);
 
-        List<OpProfileAssociate> associates = request.getKnownAssociates().stream()
+        // Null-safe: treat null list same as empty list
+        List<AssociateRequest> incoming = request.getKnownAssociates() != null
+                ? request.getKnownAssociates()
+                : new ArrayList<>();
+
+        List<OpProfileAssociate> associates = incoming.stream()
                 .filter(a -> a.getName() != null && !a.getName().isBlank())
                 .map(a -> OpProfileAssociate.builder()
                         .profile(profile)
                         .name(a.getName())
                         .relationship(a.getRelationship())
-                        .role(a.getRole() != null ? a.getRole() : AssociateRole.ASSOCIATE)
+                        .role(EnumUtils.parse(AssociateRole.class, a.getRole(), AssociateRole.N_A))
                         .contactInfo(a.getContactInfo())
                         .notes(a.getNotes())
                         .build())
@@ -521,7 +522,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         associateRepository.saveAll(associates);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 12, "KNOWN_ASSOCIATES",
+        updateStepStatus(profileId, 11, "KNOWN_ASSOCIATES",
                 associates.isEmpty() ? StepStatus.NOT_FILLED : StepStatus.COMPLETED);
         saveChangeLog(profile, empId, employee.getFullName(), "KNOWN_ASSOCIATES",
                 ChangeAction.UPDATED, "associates", null, associates.size() + " associates saved");
@@ -530,7 +531,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 13 — KNOWN EMPLOYEES
+    // STEP 12 — KNOWN EMPLOYEES
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -547,13 +548,18 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .toList();
         associateRepository.deleteAllById(toDelete);
 
-        List<OpProfileAssociate> employees = request.getKnownEmployees().stream()
+        // Null-safe: treat null list same as empty list
+        List<AssociateRequest> incoming = request.getKnownEmployees() != null
+                ? request.getKnownEmployees()
+                : new ArrayList<>();
+
+        List<OpProfileAssociate> employees = incoming.stream()
                 .filter(e -> e.getName() != null && !e.getName().isBlank())
                 .map(e -> OpProfileAssociate.builder()
                         .profile(profile)
                         .name(e.getName())
                         .relationship(e.getRelationship())
-                        .role(e.getRole() != null ? e.getRole() : AssociateRole.EMPLOYEE)
+                        .role(EnumUtils.parse(AssociateRole.class, e.getRole(), AssociateRole.EMPLOYEE))
                         .contactInfo(e.getContactInfo())
                         .notes(e.getNotes())
                         .build())
@@ -561,7 +567,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         associateRepository.saveAll(employees);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 13, "KNOWN_EMPLOYEES",
+        updateStepStatus(profileId, 12, "KNOWN_EMPLOYEES",
                 employees.isEmpty() ? StepStatus.NOT_FILLED : StepStatus.COMPLETED);
         saveChangeLog(profile, empId, employee.getFullName(), "KNOWN_EMPLOYEES",
                 ChangeAction.UPDATED, "employees", null, employees.size() + " employees saved");
@@ -570,7 +576,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 14 — PRODUCTS & OPERATIONS
+    // STEP 13 — PRODUCTS & OPERATIONS
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -579,9 +585,14 @@ public class OpProfileServiceImpl implements OpProfileService {
         Employee employee = validateAndGetEmployee(empId);
         OpProfile profile = getActiveProfile(profileId);
 
-        // Save products infringed
+        // Null-safe: treat null list same as empty list
+        List<ProductInfringedRequest> incomingProducts = request.getProductsInfringed() != null
+                ? request.getProductsInfringed()
+                : new ArrayList<>();
+
         productInfringedRepository.deleteByProfileId(profileId);
-        List<OpProfileProductInfringed> products = request.getProductsInfringed().stream()
+
+        List<OpProfileProductInfringed> products = incomingProducts.stream()
                 .filter(p -> p.getBrandName() != null && !p.getBrandName().isBlank())
                 .map(p -> OpProfileProductInfringed.builder()
                         .profile(profile)
@@ -590,18 +601,23 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .productType(p.getProductType())
                         .build())
                 .toList();
+
         productInfringedRepository.saveAll(products);
 
         // Save operations details
         OpProfileProductsOperations ops = productsOperationsRepository
                 .findByProfileId(profileId)
                 .orElse(OpProfileProductsOperations.builder().profile(profile).build());
+
         ops.setKnownModusOperandi(request.getKnownModusOperandi());
-        ops.setKnownLocations(request.getKnownLocations());
+        ops.setKnownLocations(request.getKnownLocations() != null
+                ? request.getKnownLocations()
+                : new ArrayList<>());
+
         productsOperationsRepository.save(ops);
 
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 14, "PRODUCTS_OPERATIONS",
+        updateStepStatus(profileId, 13, "PRODUCTS_OPERATIONS",
                 evaluateProductsOpsStep(request, products));
         saveChangeLog(profile, empId, employee.getFullName(), "PRODUCTS_OPERATIONS",
                 ChangeAction.UPDATED, "products_operations", null, "updated");
@@ -610,7 +626,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 15 — FAMILY BACKGROUND
+    // STEP 14 — FAMILY BACKGROUND
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -645,7 +661,7 @@ public class OpProfileServiceImpl implements OpProfileService {
         siblingRepository.saveAll(siblings);
 
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 15, "FAMILY_BACKGROUND", evaluateFamilyStep(request));
+        updateStepStatus(profileId, 14, "FAMILY_BACKGROUND", evaluateFamilyStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "FAMILY_BACKGROUND",
                 ChangeAction.UPDATED, "family_background", null, "updated");
 
@@ -653,7 +669,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 15b — INFLUENTIAL LINKS
+    // STEP 15 — INFLUENTIAL LINKS
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -664,7 +680,12 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         influentialLinkRepository.deleteByProfileId(profileId);
 
-        List<OpProfileInfluentialLink> links = request.getInfluentialLinks().stream()
+        // Null-safe: treat null list same as empty list
+        List<InfluentialLinkRequest> incoming = request.getInfluentialLinks() != null
+                ? request.getInfluentialLinks()
+                : new ArrayList<>();
+
+        List<OpProfileInfluentialLink> links = incoming.stream()
                 .filter(l -> l.getPersonName() != null && !l.getPersonName().isBlank())
                 .map(l -> OpProfileInfluentialLink.builder()
                         .profile(profile)
@@ -676,7 +697,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         influentialLinkRepository.saveAll(links);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 16, "INFLUENTIAL_LINKS",
+        updateStepStatus(profileId, 15, "INFLUENTIAL_LINKS",
                 links.isEmpty() ? StepStatus.NOT_FILLED : StepStatus.COMPLETED);
         saveChangeLog(profile, empId, employee.getFullName(), "INFLUENTIAL_LINKS",
                 ChangeAction.UPDATED, "influential_links", null, links.size() + " links saved");
@@ -711,7 +732,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         currentStatusRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 17, "CURRENT_STATUS", evaluateCurrentStatusStep(request));
+        updateStepStatus(profileId, 16, "CURRENT_STATUS", evaluateCurrentStatusStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "CURRENT_STATUS",
                 ChangeAction.UPDATED, "current_status", null, "updated");
 
@@ -742,7 +763,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         additionalInfoRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
-        updateStepStatus(profileId, 18, "ADDITIONAL_INFO", evaluateAdditionalStep(request));
+        updateStepStatus(profileId, 17, "ADDITIONAL_INFO", evaluateAdditionalStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "ADDITIONAL_INFO",
                 ChangeAction.UPDATED, "additional_info", null, "updated");
 
@@ -849,12 +870,12 @@ public class OpProfileServiceImpl implements OpProfileService {
     @Override
     public ImageUploadResponse uploadImage(MultipartFile file, String folder) {
         try {
-            Map<String, String> result = cloudinaryService.uploadFile(file,
+            Map<String, String> result = s3Service.uploadFile(file,
                     folder != null ? folder : "profiles");
 
             return ImageUploadResponse.builder()
                     .url(result.get("url"))
-                    .publicId(result.get("public_id"))
+                    .publicId(result.get("key"))
                     .format(file.getContentType())
                     .size(file.getSize())
                     .build();
@@ -883,7 +904,7 @@ public class OpProfileServiceImpl implements OpProfileService {
 
     private void initializeStepStatuses(OpProfile profile) {
         String[] stepNames = {
-                "PERSONAL_INFO", "PHYSICAL_ATTRIBUTES", "ADDRESS", "CONTACT_INFO",
+                "PERSONAL_INFO", "ADDRESS", "CONTACT_INFO",
                 "IDENTIFICATION_DOCS", "BUSINESS_ACTIVITIES", "ENTITY_ORGANIZATION",
                 "GEOGRAPHIC_EXPOSURE", "RELATED_FIRS", "MATERIAL_SEIZED", "ASSETS",
                 "KNOWN_ASSOCIATES", "KNOWN_EMPLOYEES", "PRODUCTS_OPERATIONS",
@@ -932,8 +953,10 @@ public class OpProfileServiceImpl implements OpProfileService {
 
     private String buildFullName(String first, String middle, String last) {
         StringBuilder name = new StringBuilder(first.trim());
-        if (middle != null && !middle.isBlank()) name.append(" ").append(middle.trim());
-        name.append(" ").append(last.trim());
+        if (middle != null && !middle.isBlank())
+            name.append(" ").append(middle.trim());
+        if (last != null && !last.isBlank())         // ← null-safe
+            name.append(" ").append(last.trim());
         return name.toString();
     }
 
@@ -951,20 +974,23 @@ public class OpProfileServiceImpl implements OpProfileService {
     // STEP STATUS EVALUATORS
     // ─────────────────────────────────────────────────────────────────────────
 
-    private StepStatus evaluateStep1Status(ProfileInitRequest r) {
-        long optionalFilled = countNonNull(r.getMiddleName(), r.getDateOfBirth(),
-                r.getBloodGroup(), r.getNationality(), r.getProfilePhoto());
-        if (optionalFilled >= 1) return StepStatus.COMPLETED;
-        return StepStatus.HALF_FILLED; // mandatory 3 filled but no optional
+    // AFTER — COMPLETED when firstName + gender are filled (mandatory fields only)
+    private StepStatus evaluateStep1Status(ProfileInitRequest request) {
+        boolean firstNameFilled = request.getFirstName() != null
+                && !request.getFirstName().isBlank();
+        boolean genderFilled = request.getGender() != null;
+
+        if (firstNameFilled && genderFilled) {
+            return StepStatus.COMPLETED;
+        }
+        if (firstNameFilled) {
+            return StepStatus.HALF_FILLED;
+        }
+        return StepStatus.NOT_FILLED;
     }
 
-    private StepStatus evaluatePhysicalStep(PhysicalAttributesRequest r) {
-        long filled = countNonNull(r.getHeight(), r.getWeight(), r.getEyeColor(),
-                r.getHairColor(), r.getSkinTone(), r.getIdentificationMarks(), r.getDisabilities());
-        if (filled == 0) return StepStatus.NOT_FILLED;
-        if (filled == 7) return StepStatus.COMPLETED;
-        return StepStatus.HALF_FILLED;
-    }
+
+
 
     private StepStatus evaluateAddressStep(AddressRequest r) {
         long filled = countNonNull(r.getAddressLine1(), r.getCity(), r.getState(),
@@ -1071,18 +1097,6 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .bloodGroup(p.getBloodGroup())
                         .nationality(p.getNationality())
                         .profilePhoto(p.getProfilePhoto())
-                        .build())
-                .orElse(null);
-
-        // Physical Attributes
-        PhysicalAttributesResponse physicalResponse = physicalAttributesRepository
-                .findByProfileId(profileId)
-                .map(p -> PhysicalAttributesResponse.builder()
-                        .height(p.getHeight()).weight(p.getWeight())
-                        .eyeColor(p.getEyeColor()).hairColor(p.getHairColor())
-                        .skinTone(p.getSkinTone())
-                        .identificationMarks(p.getIdentificationMarks())
-                        .disabilities(p.getDisabilities())
                         .build())
                 .orElse(null);
 
@@ -1286,7 +1300,6 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
                 .personalInfo(personalInfoResponse)
-                .physicalAttributes(physicalResponse)
                 .address(addressResponse)
                 .contactInfo(contactResponse)
                 .identificationDocs(idDocsResponse)
@@ -1319,7 +1332,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     private PagedProfileResponse mapToPagedResponse(Page<OpProfile> page) {
         List<ProfileSummaryResponse> summaries = page.getContent().stream()
                 .map(p -> {
-                    long completed = stepStatusRepository
+                    long COMPLETED = stepStatusRepository
                             .countByProfileIdAndStatus(p.getId(), StepStatus.COMPLETED);
                     String photo = personalInfoRepository.findByProfileId(p.getId())
                             .map(OpProfilePersonalInfo::getProfilePhoto).orElse(null);
@@ -1336,7 +1349,7 @@ public class OpProfileServiceImpl implements OpProfileService {
                             .updatedBy(p.getUpdatedBy())
                             .createdAt(p.getCreatedAt())
                             .updatedAt(p.getUpdatedAt())
-                            .completedSteps(completed)
+                            .COMPLETEDSteps(COMPLETED)
                             .totalSteps(TOTAL_STEPS)
                             .build();
                 })

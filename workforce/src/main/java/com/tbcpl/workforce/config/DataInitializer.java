@@ -44,7 +44,7 @@ public class DataInitializer implements ApplicationRunner {
         seedRoles();
         seedAdminDepartment();
         seedSuperAdmin();
-        log.info("=== DataInitializer: Seed complete ===");
+        log.info("=== DataInitializer: Seed COMPLETED ===");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.tbcpl.workforce.auth.dto.request.EmployeeUpdateRequest;
 
 import java.io.IOException;
 import java.util.List;
@@ -142,4 +143,17 @@ public class EmployeeController {
         return ResponseEntity.ok(
                 ApiResponse.success("Profile photo uploaded successfully", response));
     }
+
+    @PutMapping(ApiEndpoints.EMPLOYEE_BY_ID)
+    public ResponseEntity<ApiResponse<EmployeeResponse>> updateEmployee(
+            @PathVariable Long id,
+            @Valid @RequestBody EmployeeUpdateRequest request,
+            Authentication authentication
+    ) {
+        String updatedBy = authentication.getName();
+        log.info("Update employee ID: {} by: {}", id, updatedBy);
+        EmployeeResponse response = employeeService.updateEmployee(id, request, updatedBy);
+        return ResponseEntity.ok(ApiResponse.success("Employee updated successfully", response));
+    }
+
 }

@@ -9,7 +9,7 @@ public class MaterialSeizedItemRequest {
     private String company;
     private String quantity;
     private String location;
-    private RaidingAuthority raidingAuthority;
+    private String raidingAuthority;
     private String raidingAuthorityOther;
     private String dateSeized;
 }

@@ -62,7 +62,7 @@ public class PasswordExpiryScheduler {
             page++;
         } while (!batch.isEmpty());
 
-        log.info("✅ Password expiry check completed");
+        log.info("✅ Password expiry check COMPLETED");
     }
 
     /**

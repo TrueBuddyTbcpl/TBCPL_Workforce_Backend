@@ -142,6 +142,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             @Param("roleNames") List<String> roleNames
     );
 
+    /**
+     * Fetch all active employees by role name (case-insensitive).
+     * Used by grnd_operation LOA module to populate FIELD_ASSOCIATE dropdown.
+     */
+    @Query("SELECT e FROM Employee e JOIN FETCH e.department JOIN FETCH e.role " +
+            "WHERE UPPER(e.role.roleName) = UPPER(:roleName) AND e.isActive = true " +
+            "ORDER BY e.firstName ASC")
+    List<Employee> findActiveEmployeesByRoleName(@Param("roleName") String roleName);
+
     long countByIsActiveTrue();
 
     long countByDepartmentIdAndIsActiveTrue(Long departmentId);
