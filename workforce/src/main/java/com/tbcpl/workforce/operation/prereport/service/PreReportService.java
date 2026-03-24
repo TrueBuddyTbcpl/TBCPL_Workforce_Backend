@@ -460,6 +460,8 @@ public class PreReportService {
                 .createdAt(preReport.getCreatedAt())
                 .updatedAt(preReport.getUpdatedAt())
                 .caseNumber(preReport.getCaseNumber())
+                .changeComments(preReport.getChangeComments())
+                .rejectionReason(preReport.getRejectionReason())
                 .caseId(preReport.getCaseId())
                 .build();
     }

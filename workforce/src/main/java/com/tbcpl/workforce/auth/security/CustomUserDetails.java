@@ -18,17 +18,32 @@ public class CustomUserDetails implements UserDetails {
 
     private final Employee employee;
 
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Grant authorities based on department
-        String department = "DEPARTMENT_" + employee.getDepartment().getDepartmentName().toUpperCase();
-        String role = "ROLE_" + employee.getRole().getRoleName().toUpperCase();
+        String roleName = employee.getRole().getRoleName().toUpperCase();
+
+        // ── FIX: For admin roles, always grant DEPARTMENT_ADMIN authority ────────
+        // regardless of which department they are assigned to in the DB.
+        // Previously this relied on departmentName which could be wrong for ADMIN role.
+        String departmentAuthority = switch (roleName) {
+            case "SUPER_ADMIN", "ADMIN" -> "DEPARTMENT_ADMIN";
+            case "HR_MANAGER"           -> "DEPARTMENT_HR";
+            case "FIELD_ASSOCIATE",
+                 "ASSOCIATE"            -> "DEPARTMENT_OPERATION";
+            case "ACCOUNTS"             -> "DEPARTMENT_ACCOUNTS";
+            // Fallback: derive from department name as before
+            default -> "DEPARTMENT_" + employee.getDepartment().getDepartmentName().toUpperCase();
+        };
+
+        String roleAuthority = "ROLE_" + roleName;
 
         return List.of(
-                new SimpleGrantedAuthority(department),
-                new SimpleGrantedAuthority(role)
+                new SimpleGrantedAuthority(departmentAuthority),
+                new SimpleGrantedAuthority(roleAuthority)
         );
     }
+
 
     @Override
     public String getPassword() {

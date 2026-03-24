@@ -94,6 +94,7 @@ public class PreReport {
     public boolean canEdit() {
         return reportStatus == ReportStatus.DRAFT
                 || reportStatus == ReportStatus.IN_PROGRESS
-                || reportStatus == ReportStatus.REQUESTED_FOR_CHANGES;
+                || reportStatus == ReportStatus.REQUESTED_FOR_CHANGES
+                || reportStatus == ReportStatus.WAITING_FOR_APPROVAL;
     }
 }

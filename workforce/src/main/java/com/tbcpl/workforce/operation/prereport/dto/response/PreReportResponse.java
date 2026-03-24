@@ -27,6 +27,9 @@ public class PreReportResponse {
     private Integer currentStep;
     private Long caseId;
 
+    private String changeComments;    // ← ADD
+    private String rejectionReason;
+
     @Builder.Default
     private String caseNumber = null;
     private Long createdBy;

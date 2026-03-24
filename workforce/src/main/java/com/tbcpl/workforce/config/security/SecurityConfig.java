@@ -129,7 +129,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/accounts/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_ACCOUNTS")
 
                         // Admin module - ADMIN only
-                        .requestMatchers("/api/v1/admin/**").hasAuthority("DEPARTMENT_ADMIN")
+                                .requestMatchers("/api/v1/admin/**").hasAnyAuthority("DEPARTMENT_ADMIN", "ADMIN")
 
 
                                 // ── LOA Assets ─────────────────────────────────────────────────────────────

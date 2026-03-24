@@ -55,4 +55,22 @@ public final class ApiEndpoints {
     public static final String PASSWORD_RESET_REQUEST = "/password/reset-request";
     public static final String PASSWORD_RESET_CONFIRM = "/password/reset-confirm";
     public static final String PASSWORD_ADMIN_RESET   = "/password/admin-reset";
+
+    // ─── Proposal endpoints ───────────────────────────────────────────────────────
+    public static final String PROPOSALS                    = "/proposals";
+    public static final String PROPOSAL_BY_ID               = "/proposals/{id}";
+    public static final String PROPOSAL_BACKGROUND          = "/proposals/{id}/background";
+    public static final String PROPOSAL_SCOPE               = "/proposals/{id}/scope";
+    public static final String PROPOSAL_METHODOLOGY         = "/proposals/{id}/methodology";
+    public static final String PROPOSAL_FEE                 = "/proposals/{id}/fee";
+    public static final String PROPOSAL_PAYMENT_TERMS       = "/proposals/{id}/payment-terms";
+    public static final String PROPOSAL_CONFIDENTIALITY     = "/proposals/{id}/confidentiality";
+    public static final String PROPOSAL_OBLIGATIONS         = "/proposals/{id}/obligations";
+    public static final String PROPOSAL_CONCLUSION          = "/proposals/{id}/conclusion";
+    public static final String PROPOSAL_STEPS               = "/proposals/{id}/steps";
+    public static final String PROPOSAL_STATUS              = "/proposals/{id}/status";
+    public static final String PROPOSAL_SIGNATURE           = "/proposals/{id}/signature";
+    public static final String PROPOSAL_PDF                 = "/proposals/{id}/pdf";
+    public static final String PROPOSAL_SEND_EMAIL          = "/proposals/{id}/send-email";
+
 }

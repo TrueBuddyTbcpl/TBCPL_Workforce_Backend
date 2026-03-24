@@ -4,5 +4,8 @@ public enum NatureOfEntity {
     SUPPLIER,
     MANUFACTURER,
     PACKAGER,
-    STOCKIST
+    STOCKIST,
+    DISTRIBUTOR,  // ← ADD
+    RETAILER,     // ← ADD
+    ONLINE_SELLER //
 }

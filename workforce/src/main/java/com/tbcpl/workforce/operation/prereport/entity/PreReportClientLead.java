@@ -90,11 +90,11 @@ public class PreReportClientLead {
     private String productDetails;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "photos_provided")
+    @Column(name = "photos_provided", columnDefinition = "VARCHAR(10)")
     private YesNo photosProvided;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "video_provided")
+    @Column(name = "video_provided", columnDefinition = "VARCHAR(10)")
     private YesNo videoProvided;
 
     @Enumerated(EnumType.STRING)
@@ -175,28 +175,28 @@ public class PreReportClientLead {
 
     // Step 6: Quality Assessment
     @Enumerated(EnumType.STRING)
-    @Column(name = "qa_Completeness")
+    @Column(name = "qa_completeness", columnDefinition = "VARCHAR(30)")
     private CompletenessLevel qaCompleteness;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "qa_accuracy")
+    @Column(name = "qa_accuracy", columnDefinition = "VARCHAR(30)")
     private AccuracyLevel qaAccuracy;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "qa_independent_investigation")
+    @Column(name = "qa_independent_investigation", columnDefinition = "VARCHAR(30)")
     private YesNo qaIndependentInvestigation;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "qa_prior_confrontation")
+    @Column(name = "qa_prior_confrontation", columnDefinition = "VARCHAR(30)")
     private YesNo qaPriorConfrontation;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "qa_contamination_risk")
+    @Column(name = "qa_contamination_risk", columnDefinition = "VARCHAR(30)")
     private RiskLevel qaContaminationRisk;
 
     // Step 7: Assessment
     @Enumerated(EnumType.STRING)
-    @Column(name = "assessment_overall")
+    @Column(name = "assessment_overall", columnDefinition = "VARCHAR(30)")
     private ClientLeadAssessment assessmentOverall;
 
     @Column(name = "assessment_rationale", columnDefinition = "LONGTEXT")
