@@ -5,5 +5,6 @@ public enum SuspectedActivity {
     LOOKALIKE,
     LOOK_ALIKE_PRODUCTS,
     SPURIOUS,
-    SPURIOUS_DISTRIBUTION
+    SPURIOUS_DISTRIBUTION,
+    CUSTOM
 }

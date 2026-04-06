@@ -3,7 +3,8 @@ package com.tbcpl.workforce.operation.prereport.entity.enums;
 public enum InfringementType {
     COUNTERFEIT,
     LOOKALIKE,
-    TRADEMARK,    // ← ADD
-    PATENT,       // ← ADD
-    OTHER
+    TRADEMARK,
+    PATENT,
+    OTHER,
+    CUSTOM
 }

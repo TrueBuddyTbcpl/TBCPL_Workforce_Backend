@@ -15,7 +15,10 @@ import java.util.Optional;
 @Repository
 public interface PreReportRepository extends JpaRepository<PreReport, Long> {
 
+    @Query("SELECT p FROM PreReport p LEFT JOIN FETCH p.client WHERE p.reportId = :reportId")
+    Optional<PreReport> findByReportIdWithClient(@Param("reportId") String reportId);
     Optional<PreReport> findByReportIdAndIsDeletedFalse(String reportId);
+    Optional<PreReport> findByReportId(String reportId);
 
     @Query("SELECT p FROM PreReport p WHERE p.isDeleted = false ORDER BY p.createdAt DESC")
     Page<PreReport> findAllActiveReports(Pageable pageable);
@@ -35,6 +38,8 @@ public interface PreReportRepository extends JpaRepository<PreReport, Long> {
 
     @Query("SELECT COUNT(p) FROM PreReport p WHERE YEAR(p.createdAt) = :year")
     Long countByYear(@Param("year") int year);
+
+
 
     boolean existsByReportId(String reportId);
 }

@@ -1,3 +1,4 @@
+// PrereportCustomOptClientLeadRepository.java
 package com.tbcpl.workforce.operation.prereport.repository;
 
 import com.tbcpl.workforce.operation.prereport.entity.PrereportCustomOptClientLead;
@@ -10,8 +11,14 @@ import java.util.List;
 public interface PrereportCustomOptClientLeadRepository
         extends JpaRepository<PrereportCustomOptClientLead, Long> {
 
-    // Replace the existing method with this lead_type-aware version:
+    // Existing
     List<PrereportCustomOptClientLead> findByStepNumberAndLeadTypeAndDeletedFalseOrderByCreatedAtAsc(
             Integer stepNumber, String leadType);
 
+    // Existing
+    List<PrereportCustomOptClientLead> findByFieldKeyAndLeadTypeAndDeletedFalseOrderByCreatedAtAsc(
+            String fieldKey, String leadType);
+
+    // ✅ ADD THIS — fetches ALL options for a leadType across ALL steps for PDF
+    List<PrereportCustomOptClientLead> findByLeadTypeAndDeletedFalse(String leadType);
 }

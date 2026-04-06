@@ -1,6 +1,7 @@
 package com.tbcpl.workforce.operation.prereport.entity.enums;
 
-public enum YesNo {
+public enum YesNoUnknown {
     YES,
-    NO
+    NO,
+    NOT_KNOWN
 }

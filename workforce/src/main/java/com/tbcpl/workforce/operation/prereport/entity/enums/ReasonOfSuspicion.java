@@ -1,0 +1,12 @@
+package com.tbcpl.workforce.operation.prereport.entity.enums;
+
+public enum ReasonOfSuspicion {
+    SIGNIFICANTLY_LOW_COST,
+    UNAUTHORISED_ILLEGAL_SUPPLIER,
+    POOR_PRINTING_AND_PACKAGING_QUALITY,
+    BLACK_LISTED_SERIAL_NUMBERS,
+    REPEATED_SERIAL_NUMBERS,
+    SUSPICIOUS_BLACKLISTED_BATCH_NUMBER,
+    PRINTING_ERROR,
+    CUSTOM
+}

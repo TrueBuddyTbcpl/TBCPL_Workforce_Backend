@@ -24,18 +24,29 @@ public class PrereportCustomOptClientLeadController {
         this.service = service;
     }
 
-    // Update GET endpoint to accept leadType param:
+    // Existing — get by step number (Client Lead)
     @GetMapping
     public ResponseEntity<ApiResponse<List<CustomOptClientLeadResponse>>> getByStep(
             @RequestParam Integer stepNumber,
-            @RequestParam String leadType) {            // ← ADD THIS
+            @RequestParam String leadType) {
         log.info("GET /custom-options?stepNumber={}&leadType={}", stepNumber, leadType);
         return ResponseEntity.ok(
                 ApiResponse.success("Custom options fetched",
-                        service.getOptionsByStep(stepNumber, leadType)));   // ← pass leadType
+                        service.getOptionsByStep(stepNumber, leadType)));
     }
 
+    // ← ADD: get by field key (TrueBuddy Lead)
+    @GetMapping("/by-field")
+    public ResponseEntity<ApiResponse<List<CustomOptClientLeadResponse>>> getByFieldKey(
+            @RequestParam String fieldKey,
+            @RequestParam String leadType) {
+        log.info("GET /custom-options/by-field?fieldKey={}&leadType={}", fieldKey, leadType);
+        return ResponseEntity.ok(
+                ApiResponse.success("Custom options fetched",
+                        service.getOptionsByFieldKey(fieldKey, leadType)));
+    }
 
+    // Existing — create
     @PostMapping
     public ResponseEntity<ApiResponse<CustomOptClientLeadResponse>> create(
             @Valid @RequestBody CustomOptClientLeadRequest request) {
@@ -44,6 +55,7 @@ public class PrereportCustomOptClientLeadController {
                 .body(ApiResponse.success("Custom option created", service.createOption(request)));
     }
 
+    // Existing — delete
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         log.info("DELETE /custom-options/{}", id);

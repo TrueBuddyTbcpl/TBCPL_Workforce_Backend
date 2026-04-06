@@ -1,9 +1,6 @@
 package com.tbcpl.workforce.operation.prereport.dto.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @NoArgsConstructor
@@ -11,5 +8,5 @@ import lombok.NoArgsConstructor;
 @Builder
 public class TrueBuddyLeadStep10Request {
 
-    private String remarks;
+    private String customDisclaimer;
 }

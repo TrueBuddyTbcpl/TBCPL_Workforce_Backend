@@ -126,13 +126,4 @@ public class PreReportTrueBuddyLeadController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{prereportId}/truebuddy-lead/step/11")
-    public ResponseEntity<TrueBuddyLeadStepResponse> updateStep11(
-            @PathVariable Long prereportId,
-            @RequestBody TrueBuddyLeadStep11Request request) {
-        log.info("PUT /api/v1/operation/prereport/{}/truebuddy-lead/step/11 - Updating step 11", prereportId);
-
-        TrueBuddyLeadStepResponse response = trueBuddyLeadService.updateStep11(prereportId, request);
-        return ResponseEntity.ok(response);
-    }
 }

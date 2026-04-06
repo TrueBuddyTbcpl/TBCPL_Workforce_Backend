@@ -526,44 +526,38 @@ public class PreReportService {
 
     private List<StepStatusDetail> getTrueBuddyLeadStepStatuses(Long prereportId) {
         try {
-            var trueBuddyLead = trueBuddyLeadService.getTrueBuddyLeadByPrereportId(prereportId);
-
-            // Fetch step tracking data
+            var lead = trueBuddyLeadService.getTrueBuddyLeadByPrereportId(prereportId);
             List<PreReportStepTracking> trackingList = stepTrackingRepository
                     .findByPrereportIdOrderByStepNumberAsc(prereportId);
-
             Map<Integer, StepStatus> trackingMap = trackingList.stream()
                     .collect(Collectors.toMap(
                             PreReportStepTracking::getStepNumber,
-                            PreReportStepTracking::getStatus
-                    ));
+                            PreReportStepTracking::getStatus));
 
             return List.of(
                     StepStatusDetail.builder().stepNumber(1).stepName("Basic Information")
-                            .status(getStepStatus(trackingMap, 1, trueBuddyLead.getDateInternalLeadGeneration() != null)).build(),
+                            .status(getStepStatus(trackingMap, 1, lead.getDateInternalLeadGeneration() != null)).build(),
                     StepStatusDetail.builder().stepNumber(2).stepName("Scope")
-                            .status(getStepStatus(trackingMap, 2, trueBuddyLead.getScopeIprSupplier() != null)).build(),
+                            .status(getStepStatus(trackingMap, 2, lead.getScopeIprSupplier() != null)).build(),
                     StepStatusDetail.builder().stepNumber(3).stepName("Intelligence Nature")
-                            .status(getStepStatus(trackingMap, 3, trueBuddyLead.getIntelNature() != null)).build(),
+                            .status(getStepStatus(trackingMap, 3, lead.getIntelNature() != null)).build(),
                     StepStatusDetail.builder().stepNumber(4).stepName("Verification")
-                            .status(getStepStatus(trackingMap, 4, trueBuddyLead.getVerificationIntelCorroboration() != null)).build(),
+                            .status(getStepStatus(trackingMap, 4, lead.getVerificationIntelCorroboration() != null)).build(),
                     StepStatusDetail.builder().stepNumber(5).stepName("Observations")
-                            .status(getStepStatus(trackingMap, 5, trueBuddyLead.getObsOperationScale() != null)).build(),
+                            .status(getStepStatus(trackingMap, 5, lead.getObsOperationScale() != null)).build(),
                     StepStatusDetail.builder().stepNumber(6).stepName("Risk Assessment")
-                            .status(getStepStatus(trackingMap, 6, trueBuddyLead.getRiskSourceReliability() != null)).build(),
+                            .status(getStepStatus(trackingMap, 6, lead.getRiskSourceReliability() != null)).build(),
                     StepStatusDetail.builder().stepNumber(7).stepName("Assessment")
-                            .status(getStepStatus(trackingMap, 7, trueBuddyLead.getAssessmentOverall() != null)).build(),
+                            .status(getStepStatus(trackingMap, 7, lead.getAssessmentOverall() != null)).build(),
                     StepStatusDetail.builder().stepNumber(8).stepName("Recommendations")
-                            .status(getStepStatus(trackingMap, 8, trueBuddyLead.getRecCovertValidation() != null)).build(),
-                    StepStatusDetail.builder().stepNumber(9).stepName("Confidentiality")
-                            .status(getStepStatus(trackingMap, 9, trueBuddyLead.getConfidentialityNote() != null)).build(),
-                    StepStatusDetail.builder().stepNumber(10).stepName("Remarks")
-                            .status(getStepStatus(trackingMap, 10, trueBuddyLead.getRemarks() != null)).build(),
-                    StepStatusDetail.builder().stepNumber(11).stepName("Disclaimer")
-                            .status(getStepStatus(trackingMap, 11, trueBuddyLead.getCustomDisclaimer() != null)).build()
+                            .status(getStepStatus(trackingMap, 8, lead.getRecCovertValidation() != null)).build(),
+                    StepStatusDetail.builder().stepNumber(9).stepName("Remarks")
+                            .status(getStepStatus(trackingMap, 9, lead.getRemarks() != null)).build(),
+                    StepStatusDetail.builder().stepNumber(10).stepName("Disclaimer")
+                            .status(getStepStatus(trackingMap, 10, lead.getCustomDisclaimer() != null)).build()
             );
         } catch (Exception e) {
-            return createPendingSteps(11);
+            return createPendingSteps(10);
         }
     }
 

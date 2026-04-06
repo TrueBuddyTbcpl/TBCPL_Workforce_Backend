@@ -1,5 +1,7 @@
 package com.tbcpl.workforce.operation.prereport.dto.response;
 
+import com.tbcpl.workforce.operation.prereport.dto.request.CustomObservationEntry;
+import com.tbcpl.workforce.operation.prereport.dto.request.CustomVerificationEntry;
 import com.tbcpl.workforce.operation.prereport.entity.PreReportOnlinePresence;
 import com.tbcpl.workforce.operation.prereport.entity.enums.*;
 import lombok.AllArgsConstructor;
@@ -43,9 +45,9 @@ public class ClientLeadStepResponse {
     private String pincode;
     private List<PreReportOnlinePresence> onlinePresences;
     private String productDetails;
-    private YesNo photosProvided;
-    private YesNo videoProvided;
-    private YesNo invoiceAvailable;
+    private YesNoUnknown photosProvided;       // ← WAS YesNo
+    private YesNoUnknown videoProvided;        // ← WAS YesNo
+    private YesNoUnknown invoiceAvailable;
     private String sourceNarrative;
 
     // Step 4
@@ -59,6 +61,7 @@ public class ClientLeadStepResponse {
     private String verificationPretextCallingNotes;
     private VerificationStatus verificationProductReview;
     private String verificationProductReviewNotes;
+    private List<CustomVerificationEntry> verificationCustomData;
 
     // Step 5
     private String obsIdentifiableTarget;
@@ -66,12 +69,13 @@ public class ClientLeadStepResponse {
     private String obsProductVisibility;
     private String obsCounterfeitingIndications;
     private String obsEvidentiary_gaps;
+    private List<CustomObservationEntry> observationsCustomData;
 
     // Step 6
     private CompletenessLevel qaCompleteness;
     private AccuracyLevel qaAccuracy;
-    private YesNo qaIndependentInvestigation;
-    private YesNo qaPriorConfrontation;
+    private YesNoUnknown qaIndependentInvestigation;
+    private YesNoUnknown qaPriorConfrontation;
     private RiskLevel qaContaminationRisk;
 
     // Step 7
@@ -85,6 +89,7 @@ public class ClientLeadStepResponse {
     private Boolean recEnforcementAction;
     private Boolean recAdditionalInfo;
     private Boolean recClosureHold;
+    private List<Long> recCustomIds;
 
     // Step 9
     private String remarks;

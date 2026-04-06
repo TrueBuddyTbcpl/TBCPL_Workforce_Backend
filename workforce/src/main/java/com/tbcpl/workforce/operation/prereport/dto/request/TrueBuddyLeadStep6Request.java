@@ -1,13 +1,7 @@
 package com.tbcpl.workforce.operation.prereport.dto.request;
 
-import com.tbcpl.workforce.operation.prereport.entity.enums.RiskLevel;
-import com.tbcpl.workforce.operation.prereport.entity.enums.SourceReliability;
-import com.tbcpl.workforce.operation.prereport.entity.enums.YesNo;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import com.tbcpl.workforce.operation.prereport.entity.enums.*;
+import lombok.*;
 import java.util.List;
 
 @Data
@@ -20,6 +14,5 @@ public class TrueBuddyLeadStep6Request {
     private RiskLevel riskClientConflict;
     private YesNo riskImmediateAction;
     private YesNo riskControlledValidation;
-    private RiskLevel riskPrematureDisclosure;
     private List<CustomRiskEntry> riskCustomData;
 }

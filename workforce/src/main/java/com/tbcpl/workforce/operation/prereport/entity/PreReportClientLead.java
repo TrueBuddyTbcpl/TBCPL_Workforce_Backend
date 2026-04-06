@@ -90,16 +90,16 @@ public class PreReportClientLead {
     private String productDetails;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "photos_provided", columnDefinition = "VARCHAR(10)")
-    private YesNo photosProvided;
+    @Column(name = "photos_provided", columnDefinition = "VARCHAR(15)")
+    private YesNoUnknown photosProvided;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "video_provided", columnDefinition = "VARCHAR(10)")
-    private YesNo videoProvided;
+    @Column(name = "video_provided", columnDefinition = "VARCHAR(15)")
+    private YesNoUnknown videoProvided;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "invoice_available")
-    private YesNo invoiceAvailable;
+    @Column(name = "invoice_available", columnDefinition = "VARCHAR(15)") // ← ADD columnDefinition
+    private YesNoUnknown invoiceAvailable;
 
     @Column(name = "source_narrative", columnDefinition = "LONGTEXT")
     private String sourceNarrative;
@@ -183,12 +183,12 @@ public class PreReportClientLead {
     private AccuracyLevel qaAccuracy;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "qa_independent_investigation", columnDefinition = "VARCHAR(30)")
-    private YesNo qaIndependentInvestigation;
+    @Column(name = "qa_independent_investigation", columnDefinition = "VARCHAR(15)")
+    private YesNoUnknown qaIndependentInvestigation;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "qa_prior_confrontation", columnDefinition = "VARCHAR(30)")
-    private YesNo qaPriorConfrontation;
+    @Column(name = "qa_prior_confrontation", columnDefinition = "VARCHAR(15)")
+    private YesNoUnknown qaPriorConfrontation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "qa_contamination_risk", columnDefinition = "VARCHAR(30)")

@@ -1,6 +1,7 @@
 package com.tbcpl.workforce.operation.prereport.dto.request;
 
 import com.tbcpl.workforce.operation.prereport.entity.enums.YesNo;
+import com.tbcpl.workforce.operation.prereport.entity.enums.YesNoUnknown;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,8 +25,8 @@ public class ClientLeadStep3Request {
     private String pincode;
     private List<OnlinePresenceRequest> onlinePresences;
     private String productDetails;
-    private YesNo photosProvided;
-    private YesNo videoProvided;
-    private YesNo invoiceAvailable;
+    private YesNoUnknown photosProvided;    // ← was YesNo
+    private YesNoUnknown videoProvided;     // ← was YesNo
+    private YesNoUnknown invoiceAvailable;
     private String sourceNarrative;
 }

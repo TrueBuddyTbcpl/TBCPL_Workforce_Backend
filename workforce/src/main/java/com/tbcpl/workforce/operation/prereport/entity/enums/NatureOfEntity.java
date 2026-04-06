@@ -5,7 +5,8 @@ public enum NatureOfEntity {
     MANUFACTURER,
     PACKAGER,
     STOCKIST,
-    DISTRIBUTOR,  // ← ADD
-    RETAILER,     // ← ADD
-    ONLINE_SELLER //
+    DISTRIBUTOR,
+    RETAILER,
+    ONLINE_SELLER,
+    CUSTOM
 }

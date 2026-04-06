@@ -10,8 +10,9 @@ import java.time.LocalDateTime;
 @Table(
         name = "prereport_cutom_opt_clientlead",
         indexes = {
-                @Index(name = "idx_pcocl_step",    columnList = "step_number"),
-                @Index(name = "idx_pcocl_deleted", columnList = "is_deleted")
+                @Index(name = "idx_pcocl_step",      columnList = "step_number"),
+                @Index(name = "idx_pcocl_deleted",   columnList = "is_deleted"),
+                @Index(name = "idx_pcocl_field_key", columnList = "field_key, lead_type") // ← ADD
         }
 )
 @Data
@@ -34,8 +35,12 @@ public class PrereportCustomOptClientLead {
     private String optionDescription;
 
     @Column(name = "lead_type", nullable = false, length = 30)
-    private String leadType;   // "CLIENT_LEAD" or "TRUEBUDDY_LEAD"
+    private String leadType;
 
+    // ← ADD: identifies which specific field this option belongs to
+    // e.g. "PRODUCT_CATEGORY", "INTELLIGENCE_NATURE", "BRAND_EXPOSURE"
+    @Column(name = "field_key", length = 100)
+    private String fieldKey;
 
     @Column(name = "created_by", length = 100)
     private String createdBy;

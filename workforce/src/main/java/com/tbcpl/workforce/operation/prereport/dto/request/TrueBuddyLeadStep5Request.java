@@ -1,14 +1,7 @@
 package com.tbcpl.workforce.operation.prereport.dto.request;
 
-import com.tbcpl.workforce.operation.prereport.entity.enums.BrandExposure;
-import com.tbcpl.workforce.operation.prereport.entity.enums.LikelihoodLevel;
-import com.tbcpl.workforce.operation.prereport.entity.enums.OperationScale;
-import com.tbcpl.workforce.operation.prereport.entity.enums.RiskLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import com.tbcpl.workforce.operation.prereport.entity.enums.*;
+import lombok.*;
 import java.util.List;
 
 @Data
@@ -20,7 +13,7 @@ public class TrueBuddyLeadStep5Request {
     private OperationScale obsOperationScale;
     private LikelihoodLevel obsCounterfeitLikelihood;
     private BrandExposure obsBrandExposure;
+    private String obsBrandExposureCustomText;      // ← CHANGED: Long → String
     private RiskLevel obsEnforcementSensitivity;
-    private RiskLevel obsLeakageRisk;
     private List<CustomObservationEntry> observationsCustomData;
 }

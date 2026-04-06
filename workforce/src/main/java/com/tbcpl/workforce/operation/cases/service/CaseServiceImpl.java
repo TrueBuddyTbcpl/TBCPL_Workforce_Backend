@@ -500,8 +500,6 @@ public class CaseServiceImpl implements CaseService {
 
     private void mapTrueBuddyLeadData(Case newCase, Long prereportId) {
         trueBuddyLeadRepository.findByPrereportId(prereportId).ifPresent(tb -> {
-            newCase.setClientSpocName(tb.getClientSpocName());
-            newCase.setClientSpocDesignation(tb.getClientSpocDesignation());
             newCase.setBroadGeography(tb.getBroadGeography());
             newCase.setNatureOfEntity(tb.getNatureOfEntity() != null
                     ? tb.getNatureOfEntity().name() : null);
@@ -521,8 +519,6 @@ public class CaseServiceImpl implements CaseService {
                     ? tb.getSuspectedActivity().name() : null);
             newCase.setProductSegment(tb.getProductSegment() != null
                     ? tb.getProductSegment().name() : null);
-            newCase.setSupplyChainStage(tb.getSupplyChainStage() != null
-                    ? tb.getSupplyChainStage().name() : null);
             newCase.setRepeatIntelligence(tb.getRepeatIntelligence() != null
                     ? tb.getRepeatIntelligence().name() : null);
             newCase.setMultiBrandRisk(tb.getMultiBrandRisk() != null
@@ -550,8 +546,6 @@ public class CaseServiceImpl implements CaseService {
                     ? tb.getObsBrandExposure().name() : null);
             newCase.setObsEnforcementSensitivity(tb.getObsEnforcementSensitivity() != null
                     ? tb.getObsEnforcementSensitivity().name() : null);
-            newCase.setObsLeakageRisk(tb.getObsLeakageRisk() != null
-                    ? tb.getObsLeakageRisk().name() : null);
             newCase.setRiskSourceReliability(tb.getRiskSourceReliability() != null
                     ? tb.getRiskSourceReliability().name() : null);
             newCase.setRiskClientConflict(tb.getRiskClientConflict() != null
@@ -560,8 +554,6 @@ public class CaseServiceImpl implements CaseService {
                     ? tb.getRiskImmediateAction().name() : null);
             newCase.setRiskControlledValidation(tb.getRiskControlledValidation() != null
                     ? tb.getRiskControlledValidation().name() : null);
-            newCase.setRiskPrematureDisclosure(tb.getRiskPrematureDisclosure() != null
-                    ? tb.getRiskPrematureDisclosure().name() : null);
             newCase.setAssessmentOverall(tb.getAssessmentOverall() != null
                     ? tb.getAssessmentOverall().name() : null);
             newCase.setAssessmentRationale(tb.getAssessmentRationale());
@@ -571,7 +563,6 @@ public class CaseServiceImpl implements CaseService {
             newCase.setRecEnforcementDeferred(tb.getRecEnforcementDeferred());
             newCase.setRecContinuedMonitoring(tb.getRecContinuedMonitoring());
             newCase.setRecClientSegregation(tb.getRecClientSegregation());
-            newCase.setConfidentialityNote(tb.getConfidentialityNote());
             newCase.setRemarks(tb.getRemarks());
             newCase.setCustomDisclaimer(tb.getCustomDisclaimer());
         });

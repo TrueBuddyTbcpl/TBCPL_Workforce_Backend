@@ -29,17 +29,29 @@ public class PrereportCustomOptClientLeadService {
     public PrereportCustomOptClientLeadService(
             PrereportCustomOptClientLeadRepository repository,
             EmployeeService employeeService) {
-        this.repository     = repository;
+        this.repository      = repository;
         this.employeeService = employeeService;
     }
 
-    // ── GET ──────────────────────────────────────────────────────────────────
+    // ── GET by step (Client Lead) ─────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<CustomOptClientLeadResponse> getOptionsByStep(Integer stepNumber, String leadType) {
         log.info("Fetching custom options for step: {}, leadType: {}", stepNumber, leadType);
         return repository
                 .findByStepNumberAndLeadTypeAndDeletedFalseOrderByCreatedAtAsc(stepNumber, leadType)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ← ADD: GET by fieldKey (TrueBuddy Lead) ─────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<CustomOptClientLeadResponse> getOptionsByFieldKey(String fieldKey, String leadType) {
+        log.info("Fetching custom options for fieldKey: {}, leadType: {}", fieldKey, leadType);
+        return repository
+                .findByFieldKeyAndLeadTypeAndDeletedFalseOrderByCreatedAtAsc(fieldKey, leadType)
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -59,6 +71,7 @@ public class PrereportCustomOptClientLeadService {
                         ? request.getOptionDescription().trim() : null)
                 .createdBy(empId)
                 .leadType(request.getLeadType())
+                .fieldKey(request.getFieldKey())   // ← ADD
                 .build();
 
         return toResponse(repository.save(option));
@@ -86,12 +99,11 @@ public class PrereportCustomOptClientLeadService {
 
     private void assertAdminAccess(String empId) {
         Employee employee = employeeService.getEmployeeEntityByEmpId(empId);
+        String deptName = employee.getDepartment().getDepartmentName();
+        String roleName = employee.getRole().getRoleName();
 
-        String deptName = employee.getDepartment().getDepartmentName(); // e.g. "Admin"
-        String roleName = employee.getRole().getRoleName();             // e.g. "ADMIN"
-
-        boolean isAdminDept = DepartmentType.ADMIN == DepartmentType.fromString(deptName);
-        boolean isAdminRole = RoleType.ADMIN      == RoleType.fromDbValue(roleName)
+        boolean isAdminDept  = DepartmentType.ADMIN == DepartmentType.fromString(deptName);
+        boolean isAdminRole  = RoleType.ADMIN       == RoleType.fromDbValue(roleName)
                 || RoleType.SUPER_ADMIN == RoleType.fromDbValue(roleName);
 
         if (!isAdminDept || !isAdminRole) {
@@ -105,7 +117,7 @@ public class PrereportCustomOptClientLeadService {
         if (auth == null || auth.getName() == null) {
             throw new UnauthorizedAccessException("Not authenticated");
         }
-        return auth.getName(); // JWT principal = empId
+        return auth.getName();
     }
 
     private CustomOptClientLeadResponse toResponse(PrereportCustomOptClientLead o) {
