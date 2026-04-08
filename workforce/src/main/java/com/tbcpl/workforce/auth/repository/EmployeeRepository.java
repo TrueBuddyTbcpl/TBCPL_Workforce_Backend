@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -150,6 +151,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             "WHERE UPPER(e.role.roleName) = UPPER(:roleName) AND e.isActive = true " +
             "ORDER BY e.firstName ASC")
     List<Employee> findActiveEmployeesByRoleName(@Param("roleName") String roleName);
+
+    List<Employee> findByEmailIgnoreCaseIn(Collection<String> emails);
+    List<Employee> findAllByEmpIdIn(List<String> empIds);
 
     long countByIsActiveTrue();
 

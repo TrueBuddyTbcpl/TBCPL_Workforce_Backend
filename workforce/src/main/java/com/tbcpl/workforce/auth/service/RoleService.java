@@ -8,12 +8,16 @@ import com.tbcpl.workforce.common.enums.RoleType;
 import com.tbcpl.workforce.common.exception.DuplicateResourceException;
 import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
 import com.tbcpl.workforce.common.constants.ValidationMessages;
+import com.tbcpl.workforce.common.util.EmployeeNameResolverService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -27,6 +31,16 @@ import java.util.stream.Collectors;
 public class RoleService {
 
     private final RoleRepository roleRepository;
+    private final EmployeeNameResolverService nameResolver;
+
+    private RoleResponse mapToResponse(Role role) {
+        if (role.getCreatedBy() == null || role.getCreatedBy().isBlank()) {
+            return mapToResponse(role, Collections.emptyMap());
+        }
+        return mapToResponse(role,
+                nameResolver.resolve(Set.of(role.getCreatedBy()))
+        );
+    }
 
     /**
      * Create new role
@@ -62,9 +76,17 @@ public class RoleService {
     @Transactional(readOnly = true)
     public List<RoleResponse> getAllRoles() {
         log.info("Fetching all roles");
-        return roleRepository.findAllByOrderByRoleNameAsc()
-                .stream()
-                .map(this::mapToResponse)
+        List<Role> roles = roleRepository.findAllByOrderByRoleNameAsc();
+
+        Map<String, String> nameMap = nameResolver.resolve(
+                roles.stream()
+                        .map(Role::getCreatedBy)
+                        .filter(v -> v != null && !v.isBlank())
+                        .collect(Collectors.toSet())
+        );
+
+        return roles.stream()
+                .map(r -> mapToResponse(r, nameMap))
                 .collect(Collectors.toList());
     }
 
@@ -87,13 +109,15 @@ public class RoleService {
     public RoleResponse getRoleById(Long id) {
         log.info("Fetching role by ID: {}", id);
         Role role = roleRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error("Role not found with ID: {}", id);
-                    return new ResourceNotFoundException(
-                            String.format(ValidationMessages.ROLE_NOT_FOUND, id)
-                    );
-                });
-        return mapToResponse(role);
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format(ValidationMessages.ROLE_NOT_FOUND, id)));
+        return mapToResponse(role,
+                nameResolver.resolve(
+                        role.getCreatedBy() != null
+                                ? Set.of(role.getCreatedBy())
+                                : Collections.emptySet()
+                )
+        );
     }
 
     /**
@@ -208,14 +232,21 @@ public class RoleService {
     /**
      * Map Role entity to RoleResponse DTO
      */
-    private RoleResponse mapToResponse(Role role) {
+    private RoleResponse mapToResponse(Role role, Map<String, String> nameMap) {
+        String raw = role.getCreatedBy();
+        String resolvedName = raw == null ? null :
+                nameMap.getOrDefault(
+                        raw.contains("@") ? raw.toLowerCase() : raw,
+                        raw
+                );
+
         return RoleResponse.builder()
                 .id(role.getId())
                 .roleName(role.getRoleName())
                 .isActive(role.getIsActive())
                 .createdAt(role.getCreatedAt())
                 .updatedAt(role.getUpdatedAt())
-                .createdBy(role.getCreatedBy())
+                .createdBy(resolvedName)
                 .build();
     }
 }

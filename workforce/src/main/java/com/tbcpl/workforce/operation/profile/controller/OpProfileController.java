@@ -29,25 +29,18 @@ public class OpProfileController {
         this.profileService = profileService;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // IMAGE UPLOAD
-    // POST /api/v1/operation/profiles/upload-image
-    // ─────────────────────────────────────────────────────────────────────────
-
     @PostMapping(value = "/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImageUploadResponse> uploadImage(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "folder", required = false) String folder) {
+            @RequestParam(value = "folder", defaultValue = "profiles/photos") String folder,
+            Authentication authentication) {
 
-        log.info("POST /api/v1/operation/profiles/upload-image - folder: {}", folder);
+        String empId = authentication.getName();
+        log.info("POST /upload-image - empId: {}, folder: {}, size: {} bytes",
+                empId, folder, file.getSize());
         ImageUploadResponse response = profileService.uploadImage(file, folder);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 1 — INIT PROFILE
-    // POST /api/v1/operation/profiles/init
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PostMapping("/init")
     public ResponseEntity<ProfileDetailResponse> initProfile(
@@ -55,17 +48,22 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("POST /api/v1/operation/profiles/init - empId: {}", empId);
+        log.info("POST /init - empId: {}", empId);
         ProfileDetailResponse response = profileService.initProfile(request, empId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PutMapping("/{profileId}/personal-info")
+    public ResponseEntity<ProfileDetailResponse> savePersonalInfo(
+            @PathVariable Long profileId,
+            @Valid @RequestBody ProfileInitRequest request,
+            Authentication authentication) {
 
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 3 — ADDRESS
-    // PUT /api/v1/operation/profiles/{profileId}/address
-    // ─────────────────────────────────────────────────────────────────────────
+        String empId = authentication.getName();
+        log.info("PUT /profiles/{}/personal-info - empId: {}", profileId, empId);
+        ProfileDetailResponse response = profileService.savePersonalInfo(profileId, request, empId);
+        return ResponseEntity.ok(response);
+    }
 
     @PutMapping("/{profileId}/address")
     public ResponseEntity<ProfileDetailResponse> saveAddress(
@@ -74,15 +72,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/address - empId: {}", profileId, empId);
+        log.info("PUT /{}/address - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveAddress(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 4 — CONTACT INFO
-    // PUT /api/v1/operation/profiles/{profileId}/contact-info
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/contact-info")
     public ResponseEntity<ProfileDetailResponse> saveContactInfo(
@@ -91,15 +84,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/contact-info - empId: {}", profileId, empId);
+        log.info("PUT /{}/contact-info - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveContactInfo(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 5 — IDENTIFICATION DOCS
-    // PUT /api/v1/operation/profiles/{profileId}/identification-docs
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/identification-docs")
     public ResponseEntity<ProfileDetailResponse> saveIdentificationDocs(
@@ -108,15 +96,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/identification-docs - empId: {}", profileId, empId);
+        log.info("PUT /{}/identification-docs - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveIdentificationDocs(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 6 — BUSINESS ACTIVITIES
-    // PUT /api/v1/operation/profiles/{profileId}/business-activities
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/business-activities")
     public ResponseEntity<ProfileDetailResponse> saveBusinessActivities(
@@ -125,15 +108,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/business-activities - empId: {}", profileId, empId);
+        log.info("PUT /{}/business-activities - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveBusinessActivities(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 7 — ENTITY & ORGANIZATION
-    // PUT /api/v1/operation/profiles/{profileId}/entity-organization
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/entity-organization")
     public ResponseEntity<ProfileDetailResponse> saveEntityOrganization(
@@ -142,15 +120,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/entity-organization - empId: {}", profileId, empId);
+        log.info("PUT /{}/entity-organization - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveEntityOrganization(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 8 — GEOGRAPHIC EXPOSURE
-    // PUT /api/v1/operation/profiles/{profileId}/geographic-exposure
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/geographic-exposure")
     public ResponseEntity<ProfileDetailResponse> saveGeographicExposure(
@@ -159,15 +132,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/geographic-exposure - empId: {}", profileId, empId);
+        log.info("PUT /{}/geographic-exposure - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveGeographicExposure(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 9 — RELATED FIRs
-    // PUT /api/v1/operation/profiles/{profileId}/related-firs
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/related-firs")
     public ResponseEntity<ProfileDetailResponse> saveRelatedFIRs(
@@ -176,15 +144,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/related-firs - empId: {}", profileId, empId);
+        log.info("PUT /{}/related-firs - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveRelatedFIRs(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 10 — MATERIAL SEIZED
-    // PUT /api/v1/operation/profiles/{profileId}/material-seized
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/material-seized")
     public ResponseEntity<ProfileDetailResponse> saveMaterialSeized(
@@ -193,15 +156,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/material-seized - empId: {}", profileId, empId);
+        log.info("PUT /{}/material-seized - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveMaterialSeized(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 11 — ASSETS (VEHICLES)
-    // PUT /api/v1/operation/profiles/{profileId}/assets
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/assets")
     public ResponseEntity<ProfileDetailResponse> saveAssets(
@@ -210,15 +168,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/assets - empId: {}", profileId, empId);
+        log.info("PUT /{}/assets - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveAssets(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 12 — KNOWN ASSOCIATES
-    // PUT /api/v1/operation/profiles/{profileId}/known-associates
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/known-associates")
     public ResponseEntity<ProfileDetailResponse> saveKnownAssociates(
@@ -227,15 +180,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/known-associates - empId: {}", profileId, empId);
+        log.info("PUT /{}/known-associates - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveKnownAssociates(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 13 — KNOWN EMPLOYEES
-    // PUT /api/v1/operation/profiles/{profileId}/known-employees
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/known-employees")
     public ResponseEntity<ProfileDetailResponse> saveKnownEmployees(
@@ -244,15 +192,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/known-employees - empId: {}", profileId, empId);
+        log.info("PUT /{}/known-employees - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveKnownEmployees(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 14 — PRODUCTS & OPERATIONS
-    // PUT /api/v1/operation/profiles/{profileId}/products-operations
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/products-operations")
     public ResponseEntity<ProfileDetailResponse> saveProductsOperations(
@@ -261,15 +204,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/products-operations - empId: {}", profileId, empId);
+        log.info("PUT /{}/products-operations - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveProductsOperations(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 15 — FAMILY BACKGROUND
-    // PUT /api/v1/operation/profiles/{profileId}/family-background
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/family-background")
     public ResponseEntity<ProfileDetailResponse> saveFamilyBackground(
@@ -278,15 +216,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/family-background - empId: {}", profileId, empId);
+        log.info("PUT /{}/family-background - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveFamilyBackground(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 16 — INFLUENTIAL LINKS
-    // PUT /api/v1/operation/profiles/{profileId}/influential-links
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/influential-links")
     public ResponseEntity<ProfileDetailResponse> saveInfluentialLinks(
@@ -295,15 +228,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/influential-links - empId: {}", profileId, empId);
+        log.info("PUT /{}/influential-links - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveInfluentialLinks(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 17 — CURRENT STATUS
-    // PUT /api/v1/operation/profiles/{profileId}/current-status
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/current-status")
     public ResponseEntity<ProfileDetailResponse> saveCurrentStatus(
@@ -312,15 +240,10 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/current-status - empId: {}", profileId, empId);
+        log.info("PUT /{}/current-status - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveCurrentStatus(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 18 — ADDITIONAL INFO
-    // PUT /api/v1/operation/profiles/{profileId}/additional-info
-    // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{profileId}/additional-info")
     public ResponseEntity<ProfileDetailResponse> saveAdditionalInfo(
@@ -329,15 +252,12 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("PUT /api/v1/operation/profiles/{}/additional-info - empId: {}", profileId, empId);
+        log.info("PUT /{}/additional-info - empId: {}", profileId, empId);
         ProfileDetailResponse response = profileService.saveAdditionalInfo(profileId, request, empId);
         return ResponseEntity.ok(response);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // GET ALL PROFILES (Paginated)
-    // GET /api/v1/operation/profiles?page=0&size=10&sortBy=createdAt&direction=desc
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── READ-ONLY ENDPOINTS (no authentication parameter needed) ─────────────
 
     @GetMapping
     public ResponseEntity<PagedProfileResponse> getAllProfiles(
@@ -346,19 +266,13 @@ public class OpProfileController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction) {
 
-        log.info("GET /api/v1/operation/profiles - page: {}, size: {}", page, size);
+        log.info("GET /profiles - page: {}, size: {}", page, size);
         Sort sort = direction.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
-        PagedProfileResponse response = profileService.getAllProfiles(pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(profileService.getAllProfiles(pageable));
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // SEARCH PROFILES
-    // GET /api/v1/operation/profiles/search?query=john&page=0&size=10
-    // ─────────────────────────────────────────────────────────────────────────
 
     @GetMapping("/search")
     public ResponseEntity<PagedProfileResponse> searchProfiles(
@@ -366,16 +280,10 @@ public class OpProfileController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        log.info("GET /api/v1/operation/profiles/search - query: {}", query);
+        log.info("GET /profiles/search - query: {}", query);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        PagedProfileResponse response = profileService.searchProfiles(query, pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(profileService.searchProfiles(query, pageable));
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // GET BY STATUS
-    // GET /api/v1/operation/profiles/by-status?status=ACTIVE&page=0&size=10
-    // ─────────────────────────────────────────────────────────────────────────
 
     @GetMapping("/by-status")
     public ResponseEntity<PagedProfileResponse> getByStatus(
@@ -383,44 +291,26 @@ public class OpProfileController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        log.info("GET /api/v1/operation/profiles/by-status - status: {}", status);
+        log.info("GET /profiles/by-status - status: {}", status);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        PagedProfileResponse response = profileService.getProfilesByStatus(status, pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(profileService.getProfilesByStatus(status, pageable));
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // GET PROFILE BY ID
-    // GET /api/v1/operation/profiles/{profileId}
-    // ─────────────────────────────────────────────────────────────────────────
 
     @GetMapping("/{profileId}")
     public ResponseEntity<ProfileDetailResponse> getProfileById(
             @PathVariable Long profileId) {
 
-        log.info("GET /api/v1/operation/profiles/{}", profileId);
-        ProfileDetailResponse response = profileService.getProfileById(profileId);
-        return ResponseEntity.ok(response);
+        log.info("GET /profiles/{}", profileId);
+        return ResponseEntity.ok(profileService.getProfileById(profileId));
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // GET STEP STATUSES
-    // GET /api/v1/operation/profiles/{profileId}/steps
-    // ─────────────────────────────────────────────────────────────────────────
 
     @GetMapping("/{profileId}/steps")
     public ResponseEntity<List<StepStatusResponse>> getStepStatuses(
             @PathVariable Long profileId) {
 
-        log.info("GET /api/v1/operation/profiles/{}/steps", profileId);
-        List<StepStatusResponse> response = profileService.getStepStatuses(profileId);
-        return ResponseEntity.ok(response);
+        log.info("GET /profiles/{}/steps", profileId);
+        return ResponseEntity.ok(profileService.getStepStatuses(profileId));
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // GET CHANGE LOG
-    // GET /api/v1/operation/profiles/{profileId}/change-log?page=0&size=20
-    // ─────────────────────────────────────────────────────────────────────────
 
     @GetMapping("/{profileId}/change-log")
     public ResponseEntity<ChangeLogPagedResponse> getChangeLog(
@@ -428,16 +318,10 @@ public class OpProfileController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        log.info("GET /api/v1/operation/profiles/{}/change-log", profileId);
+        log.info("GET /profiles/{}/change-log", profileId);
         Pageable pageable = PageRequest.of(page, size);
-        ChangeLogPagedResponse response = profileService.getChangeLog(profileId, pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(profileService.getChangeLog(profileId, pageable));
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // SOFT DELETE
-    // DELETE /api/v1/operation/profiles/{profileId}
-    // ─────────────────────────────────────────────────────────────────────────
 
     @DeleteMapping("/{profileId}")
     public ResponseEntity<Void> deleteProfile(
@@ -445,7 +329,7 @@ public class OpProfileController {
             Authentication authentication) {
 
         String empId = authentication.getName();
-        log.info("DELETE /api/v1/operation/profiles/{} - empId: {}", profileId, empId);
+        log.info("DELETE /profiles/{} - empId: {}", profileId, empId);
         profileService.deleteProfile(profileId, empId);
         return ResponseEntity.noContent().build();
     }

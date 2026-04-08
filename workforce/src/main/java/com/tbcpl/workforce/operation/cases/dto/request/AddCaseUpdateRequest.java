@@ -7,4 +7,11 @@ import lombok.Setter;
 @Setter
 public class AddCaseUpdateRequest {
     private String description;
+
+    // ── NEW ────────────────────────────────────────────────────────────
+    private String procedureDoneBy;   // Full name of the employee who performed the procedure
+
+    // ──────────────────────────────────────────────────────────────────
+    private String procedureDoneByEmpId;
+
 }

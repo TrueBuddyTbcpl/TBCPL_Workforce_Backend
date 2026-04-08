@@ -11,5 +11,6 @@ public class CaseUpdateResponse {
     private Long id;
     private LocalDateTime updateDate;
     private String updatedBy;
+    private String procedureDoneBy;   // ← NEW
     private String description;
 }

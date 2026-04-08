@@ -18,5 +18,8 @@ public class PreReportSendMailRequestDto {
     @NotBlank(message = "Recipient name is required")
     private String toName;
 
+    @NotBlank(message = "Case title is required")
+    private String caseTitle;
+
     private String notes;
 }

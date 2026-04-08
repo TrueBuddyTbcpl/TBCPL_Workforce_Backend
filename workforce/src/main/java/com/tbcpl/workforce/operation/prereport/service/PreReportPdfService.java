@@ -128,9 +128,9 @@ public class PreReportPdfService {
         // 2. Scope
         List<String[]> scopeRows = new ArrayList<>();
         addBoolRow(scopeRows, "Due Diligence",                                          cl.getScopeDueDiligence());
-        addBoolRow(scopeRows, "IPR Investigation -- Retailer / Wholesaler",             cl.getScopeIprRetailer());
-        addBoolRow(scopeRows, "IPR Investigation -- Supplier",                          cl.getScopeIprSupplier());
-        addBoolRow(scopeRows, "IPR Investigation -- Manufacturer / Packager / Warehouse", cl.getScopeIprManufacturer());
+        addBoolRow(scopeRows, "IPR Retailer / Wholesaler",             cl.getScopeIprRetailer());
+        addBoolRow(scopeRows, "IPR Supplier",                          cl.getScopeIprSupplier());
+        addBoolRow(scopeRows, "IPR Manufacturer / Packager / Warehouse", cl.getScopeIprManufacturer());
         addBoolRow(scopeRows, "Online Sample Purchase",                                 cl.getScopeOnlinePurchase());
         addBoolRow(scopeRows, "Offline Sample Purchase",                                cl.getScopeOfflinePurchase());
 
@@ -229,11 +229,11 @@ public class PreReportPdfService {
 
         // 8. Recommendations
         List<String[]> recRows = new ArrayList<>();
-        addBoolRow(recRows, "Market Survey / Reconnaissance",                   cl.getRecMarketSurvey());
+        addBoolRow(recRows, "Market Survey",                   cl.getRecMarketSurvey());
         addBoolRow(recRows, "Covert Investigation",                             cl.getRecCovertInvestigation());
-        addBoolRow(recRows, "Evidential Test Purchase",                         cl.getRecTestPurchase());
-        addBoolRow(recRows, "Direct Enforcement Action",                        cl.getRecEnforcementAction());
-        addBoolRow(recRows, "Additional Information Required from Client",      cl.getRecAdditionalInfo());
+        addBoolRow(recRows, "Test Purchase",                         cl.getRecTestPurchase());
+        addBoolRow(recRows, "Enforcement Action",                        cl.getRecEnforcementAction());
+        addBoolRow(recRows, "Additional Information Required",      cl.getRecAdditionalInfo());
         addBoolRow(recRows, "Closure / Hold",                                   cl.getRecClosureHold());
 
         // ✅ FIX: Resolve custom recommendation option IDs → names
@@ -392,12 +392,12 @@ public class PreReportPdfService {
 
         // 8. Recommendations
         List<String[]> recRows = new ArrayList<>();
-        addBoolRow(recRows, "Covert Intelligence Validation",            tb.getRecCovertValidation());
-        addBoolRow(recRows, "Evidential Test Purchase",                  tb.getRecEtp());
-        addBoolRow(recRows, "Controlled Market Reconnaissance",          tb.getRecMarketReconnaissance());
+        addBoolRow(recRows, "Covert Validation",            tb.getRecCovertValidation());
+        addBoolRow(recRows, "ETP (Evidence Test Purchase)",                  tb.getRecEtp());
+        addBoolRow(recRows, "Market Reconnaissance",          tb.getRecMarketReconnaissance());
         addBoolRow(recRows, "Enforcement Planning",                      tb.getRecEnforcementDeferred());
         addBoolRow(recRows, "Continued Monitoring",                      tb.getRecContinuedMonitoring());
-        addBoolRow(recRows, "Client-Specific Segregation Required",      tb.getRecClientSegregation());
+        addBoolRow(recRows, "Client Segregation",      tb.getRecClientSegregation());
 
         // ✅ FIX: Resolve custom recommendation option IDs → names
         if (tb.getRecCustomIds() != null) {

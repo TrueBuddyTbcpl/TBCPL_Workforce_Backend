@@ -39,7 +39,7 @@ public class PreReportEmailTemplate implements ReportEmailTemplate {
                                        padding:32px 40px;text-align:center;">
                               <p style="margin:0 0 6px 0;font-size:11px;letter-spacing:3px;
                                         color:#7eb8f7;text-transform:uppercase;font-weight:600;">
-                                True Buddy Consulting Pvt. Ltd.
+                                TBCPL
                               </p>
                               <h1 style="margin:0;font-size:22px;color:#ffffff;font-weight:700;
                                          letter-spacing:0.5px;">
@@ -145,7 +145,7 @@ public class PreReportEmailTemplate implements ReportEmailTemplate {
                           <tr>
                             <td style="background:#1a2e4a;padding:22px 40px;text-align:center;">
                               <p style="margin:0;font-size:12px;color:#7eb8f7;font-weight:600;">
-                                True Buddy Consulting Pvt. Ltd.
+                                TBCPL
                               </p>
                               <p style="margin:6px 0 0 0;font-size:11px;color:#4a6a8a;">
                                 This is an automated message — please do not reply.

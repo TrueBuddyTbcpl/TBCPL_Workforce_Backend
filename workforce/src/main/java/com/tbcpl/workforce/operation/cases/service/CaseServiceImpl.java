@@ -35,14 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Map;
+import java.util.*;
 
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.stream.Collectors;
 
 
@@ -193,20 +190,50 @@ public class CaseServiceImpl implements CaseService {
     // ─────────────────────────────────────────────────────────────────
 
     @Transactional
-    public void addUpdate(Long caseId, AddCaseUpdateRequest request, String updatedBy) {
+    public void addUpdate(Long caseId, AddCaseUpdateRequest request, String updatedByEmpId) {
         Case caseEntity = caseRepository.findById(caseId)
                 .filter(c -> !c.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("Case not found: " + caseId));
 
+        // ── Resolve updatedBy: empId → fullName ───────────────────────
+        String updatedByName = employeeRepository.findByEmpId(updatedByEmpId)
+                .map(Employee::getFullName)
+                .orElse(updatedByEmpId); // fallback to empId if employee not found
+
+        // ── Resolve procedureDoneBy: empId → fullName ─────────────────
+        String procedureDoneByName = null;
+        String procedureDoneByEmpId = request.getProcedureDoneByEmpId();
+        if (procedureDoneByEmpId != null && !procedureDoneByEmpId.isBlank()) {
+            procedureDoneByName = employeeRepository.findByEmpId(procedureDoneByEmpId.trim())
+                    .map(Employee::getFullName)
+                    .orElse(procedureDoneByEmpId); // fallback
+        }
+
         CaseUpdate update = CaseUpdate.builder()
                 .caseEntity(caseEntity)
                 .updateDate(LocalDateTime.now())
-                .updatedBy(updatedBy)
+                .updatedBy(updatedByName)                    // ← always full name
+                .procedureDoneBy(procedureDoneByName)        // ← always full name
                 .description(request.getDescription())
                 .build();
 
         caseUpdateRepository.save(update);
-        log.info("Update added to case {} by {}", caseId, updatedBy);
+        log.info("Update added to case {} by {}", caseId, updatedByName);
+
+        // ── Auto-add to Assigned Team if not already present ──────────
+        if (procedureDoneByEmpId != null && !procedureDoneByEmpId.isBlank()) {
+            String current = caseEntity.getAssignedEmployees();
+            List<String> empIds = (current != null && !current.isBlank())
+                    ? new ArrayList<>(Arrays.asList(current.split(",")))
+                    : new ArrayList<>();
+
+            if (!empIds.contains(procedureDoneByEmpId.trim())) {
+                empIds.add(procedureDoneByEmpId.trim());
+                caseEntity.setAssignedEmployees(String.join(",", empIds));
+                caseRepository.save(caseEntity);
+                log.info("Employee {} auto-added to assigned team of case {}", procedureDoneByEmpId, caseId);
+            }
+        }
     }
 
 
@@ -600,9 +627,14 @@ public class CaseServiceImpl implements CaseService {
     }
 
     private CaseResponse mapToCaseResponse(Case c) {
-        List<String> employees = (c.getAssignedEmployees() != null && !c.getAssignedEmployees().isBlank())
-                ? Arrays.asList(c.getAssignedEmployees().split(","))
-                : new ArrayList<>();
+        List<String> employees = new ArrayList<>();
+        if (c.getAssignedEmployees() != null && !c.getAssignedEmployees().isBlank()) {
+            List<String> empIds = Arrays.asList(c.getAssignedEmployees().split(","));
+            employees = employeeRepository.findAllByEmpIdIn(empIds)
+                    .stream()
+                    .map(Employee::getFullName)
+                    .toList();
+        }
 
         List<CaseOnlinePresenceResponse> presences = c.getOnlinePresences().stream()
                 .map(p -> CaseOnlinePresenceResponse.builder()
@@ -613,10 +645,12 @@ public class CaseServiceImpl implements CaseService {
                 .collect(Collectors.toList());
 
         List<CaseUpdateResponse> updates = c.getUpdates().stream()
+                .sorted(Comparator.comparing(CaseUpdate::getUpdateDate).reversed())
                 .map(u -> CaseUpdateResponse.builder()
                         .id(u.getId())
                         .updateDate(u.getUpdateDate())
                         .updatedBy(u.getUpdatedBy())
+                        .procedureDoneBy(u.getProcedureDoneBy())
                         .description(u.getDescription())
                         .build())
                 .collect(Collectors.toList());

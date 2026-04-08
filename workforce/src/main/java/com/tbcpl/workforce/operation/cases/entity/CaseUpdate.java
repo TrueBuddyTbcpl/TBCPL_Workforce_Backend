@@ -28,9 +28,13 @@ public class CaseUpdate {
     @Column(name = "update_date", nullable = false)
     private LocalDateTime updateDate;
 
-    @Column(name = "updated_by", nullable = false, length = 100)
+    @Column(name = "updated_by", nullable = false, length = 150)
     private String updatedBy;
 
+    // ── NEW ────────────────────────────────────────────────────────────
+    @Column(name = "procedure_done_by", length = 150)
+    private String procedureDoneBy;
+    // ──────────────────────────────────────────────────────────────────
 
     @Column(name = "description", columnDefinition = "LONGTEXT")
     private String description;

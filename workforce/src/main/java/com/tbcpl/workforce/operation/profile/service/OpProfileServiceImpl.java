@@ -153,6 +153,40 @@ public class OpProfileServiceImpl implements OpProfileService {
         return buildProfileDetailResponse(profile.getId());
     }
 
+    @Override
+    @Transactional
+    public ProfileDetailResponse savePersonalInfo(Long profileId, ProfileInitRequest request, String empId) {
+        Employee employee = validateAndGetEmployee(empId);
+        OpProfile profile = getActiveProfile(profileId);
+
+        OpProfilePersonalInfo entity = personalInfoRepository
+                .findByProfileId(profileId)
+                .orElse(OpProfilePersonalInfo.builder().profile(profile).build());
+
+        entity.setFirstName(request.getFirstName().trim());
+        entity.setMiddleName(request.getMiddleName());
+        entity.setLastName(request.getLastName() != null ? request.getLastName().trim() : null);
+        entity.setGender(request.getGender());
+        entity.setDateOfBirth(parseDate(request.getDateOfBirth()));
+        entity.setBloodGroup(request.getBloodGroup());
+        entity.setNationality(request.getNationality());
+        entity.setProfilePhoto(request.getProfilePhoto());
+
+        personalInfoRepository.save(entity);
+
+        String fullName = buildFullName(request.getFirstName(), request.getMiddleName(), request.getLastName());
+        profile.setName(fullName);
+        updateProfileUpdatedBy(profile, empId);
+
+        updateStepStatus(profileId, 1, "PERSONAL_INFO", evaluateStep1Status(request));
+
+        saveChangeLog(profile, empId, employee.getFullName(), "PERSONAL_INFO",
+                ChangeAction.UPDATED, "personal_info", null, "updated");
+
+        log.info("Personal info updated for profileId: {} by empId: {}", profileId, empId);
+        return buildProfileDetailResponse(profileId);
+    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // STEP 2 — ADDRESS
