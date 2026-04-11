@@ -194,6 +194,7 @@ public class FinalReportServiceImpl implements FinalReportService {
                 .reportDate(request.getReportDate())
                 .sectionsJson(serializeToJson(request.getSections()))
                 .tableOfContentsJson(serializeToJson(request.getTableOfContents()))
+                .photographicEvidenceJson(serializeToJson(request.getPhotographicEvidence()))
                 .reportStatus(FinalReportStatus.DRAFT)
                 .isDeleted(false)
                 .createdBy(createdBy)
@@ -274,6 +275,7 @@ public class FinalReportServiceImpl implements FinalReportService {
         report.setReportDate(request.getReportDate());
         report.setSectionsJson(serializeToJson(request.getSections()));
         report.setTableOfContentsJson(serializeToJson(request.getTableOfContents()));
+        report.setPhotographicEvidenceJson(serializeToJson(request.getPhotographicEvidence()));
         report.setUpdatedBy(updatedBy);
         report.setUpdatedAt(LocalDateTime.now());
 
@@ -297,11 +299,13 @@ public class FinalReportServiceImpl implements FinalReportService {
 
         FinalReport report = findActiveById(reportId);
 
-        if (report.getReportStatus() != FinalReportStatus.DRAFT
-                && report.getReportStatus() != FinalReportStatus.REQUEST_CHANGES) {
+        if (report.getReportStatus() != FinalReportStatus.DRAFT &&
+                report.getReportStatus() != FinalReportStatus.REQUEST_CHANGES &&
+                report.getReportStatus() != FinalReportStatus.WAITING_FOR_APPROVAL) {
             throw new BusinessException(
-                    "Report can only be submitted when DRAFT or REQUEST_CHANGES. " +
-                            "Current: " + report.getReportStatus());
+                    "Report can only be submitted when DRAFT, REQUEST_CHANGES, or WAITING_FOR_APPROVAL. Current: "
+                            + report.getReportStatus()
+            );
         }
 
         report.setReportStatus(FinalReportStatus.WAITING_FOR_APPROVAL);
@@ -418,6 +422,17 @@ public class FinalReportServiceImpl implements FinalReportService {
                 || status == FinalReportStatus.APPROVED;
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> deserializePhotographicEvidence(String json) {
+        if (json == null || json.isBlank() || json.equals("null")) return null;
+        try {
+            return objectMapper.readValue(json, Map.class);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to deserialize photographicEvidence: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private ImageUploadResponse.UploadedImage buildFailedImage(
             int index, String name, String error) {
         return ImageUploadResponse.UploadedImage.builder()
@@ -445,6 +460,7 @@ public class FinalReportServiceImpl implements FinalReportService {
                 .sections(new ArrayList<>(deserializeSections(r.getSectionsJson())))
                 .tableOfContents(deserializeFromJson(r.getTableOfContentsJson())
                         .stream().map(Object::toString).toList())
+                .photographicEvidence(deserializePhotographicEvidence(r.getPhotographicEvidenceJson()))
                 .reportStatus(r.getReportStatus())
                 .changeComments(r.getChangeComments())
                 .previewEnabled(isPreviewEnabled(r.getReportStatus()))

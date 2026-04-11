@@ -72,6 +72,11 @@ public class FinalReport {
     @Column(name = "table_of_contents_json", columnDefinition = "TEXT")
     private String tableOfContentsJson;
 
+    // Add this field to FinalReport.java alongside sectionsJson and tableOfContentsJson:
+
+    @Column(name = "photographic_evidence_json", columnDefinition = "TEXT")
+    private String photographicEvidenceJson;
+
     // ── Status lifecycle ───────────────────────────────────────────────
     @Enumerated(EnumType.STRING)
     @Column(name = "report_status", nullable = false, length = 30)

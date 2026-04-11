@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class CreateFinalReportRequest {
@@ -32,4 +33,6 @@ public class CreateFinalReportRequest {
     private List<Object> sections;
 
     private List<String> tableOfContents;
+
+    private Map<String, Object> photographicEvidence;
 }

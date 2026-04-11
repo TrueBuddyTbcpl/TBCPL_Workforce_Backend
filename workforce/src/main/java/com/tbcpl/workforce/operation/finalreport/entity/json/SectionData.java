@@ -20,4 +20,6 @@ public class SectionData {
     private String type;         // "table" | "custom-table" | "narrative"
     private Object content;      // deserialized based on type at runtime
     private List<String> images; // Cloudinary URLs
+    private String notes;
+    private String notesHeading;
 }

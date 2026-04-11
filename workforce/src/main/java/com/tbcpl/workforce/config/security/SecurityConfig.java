@@ -211,9 +211,9 @@ public class SecurityConfig {
                 "https://www.tbcontrolcenter.com",
                 "https://tbcpl-workforce.onrender.com",
                 "http://localhost",           // ← ADD: frontend on port 80
-                "http://localhost:3000",      // ← ADD: common React dev port
-                "http://localhost:5173",
-                "http://127.0.0.1:5173"
+                "http://localhost:3000",
+                "http://192.168.1.45:3000",
+                "http://172.31.144.1:3000/"
         ));
 
         // Allow all HTTP methods

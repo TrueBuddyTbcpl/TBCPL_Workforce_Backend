@@ -10,6 +10,7 @@ import com.tbcpl.workforce.operation.finalreport.entity.json.SectionData;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -39,6 +40,8 @@ public class FinalReportResponse {
     // Content
     private List<SectionData> sections;
     private List<String> tableOfContents;
+
+    private Map<String, Object> photographicEvidence;
 
     // Status
     private FinalReportStatus reportStatus;
