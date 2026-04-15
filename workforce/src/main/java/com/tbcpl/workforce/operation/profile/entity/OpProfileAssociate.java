@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.AssociateRole;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -10,7 +9,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "op_profile_associates", indexes = {
         @Index(name = "idx_associate_profile_id", columnList = "profile_id"),
-        @Index(name = "idx_associate_role", columnList = "role")
+        @Index(name = "idx_associate_role",        columnList = "role")
 })
 @Data
 @NoArgsConstructor
@@ -32,9 +31,13 @@ public class OpProfileAssociate {
     @Column(name = "relationship", length = 100)
     private String relationship;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", length = 20)
-    private AssociateRole role;
+    // ── Was: @Enumerated AssociateRole role ─────────────────────────────────
+    @Column(name = "role", length = 100)
+    private String role;
+
+    @Column(name = "role_other", length = 255)
+    private String roleOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     @Column(name = "contact_info", length = 255)
     private String contactInfo;

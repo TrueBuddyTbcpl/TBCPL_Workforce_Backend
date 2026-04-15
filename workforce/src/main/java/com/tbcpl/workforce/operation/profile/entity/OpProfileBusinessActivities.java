@@ -1,7 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.AuthorizationStatus;
-import com.tbcpl.workforce.operation.profile.enums.BusinessEntityStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -26,38 +24,52 @@ public class OpProfileBusinessActivities {
     @JoinColumn(name = "profile_id", nullable = false, unique = true)
     private OpProfile profile;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "retailer_status", length = 20)
-    private BusinessEntityStatus retailerStatus;
+    // ── Was: @Enumerated BusinessEntityStatus / AuthorizationStatus ──────────
+    @Column(name = "retailer_status", length = 100)
+    private String retailerStatus;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "retailer_type", length = 20)
-    private AuthorizationStatus retailerType;
+    @Column(name = "retailer_status_other", length = 255)
+    private String retailerStatusOther;
+
+    @Column(name = "retailer_type", length = 100)
+    private String retailerType;
+
+    @Column(name = "retailer_type_other", length = 255)
+    private String retailerTypeOther;
 
     @Column(name = "retailer_details", columnDefinition = "TEXT")
     private String retailerDetails;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "supplier_status", length = 20)
-    private BusinessEntityStatus supplierStatus;
+    @Column(name = "supplier_status", length = 100)
+    private String supplierStatus;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "supplier_type", length = 20)
-    private AuthorizationStatus supplierType;
+    @Column(name = "supplier_status_other", length = 255)
+    private String supplierStatusOther;
+
+    @Column(name = "supplier_type", length = 100)
+    private String supplierType;
+
+    @Column(name = "supplier_type_other", length = 255)
+    private String supplierTypeOther;
 
     @Column(name = "supplier_details", columnDefinition = "TEXT")
     private String supplierDetails;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "manufacturer_status", length = 20)
-    private BusinessEntityStatus manufacturerStatus;
+    @Column(name = "manufacturer_status", length = 100)
+    private String manufacturerStatus;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "manufacturer_type", length = 20)
-    private AuthorizationStatus manufacturerType;
+    @Column(name = "manufacturer_status_other", length = 255)
+    private String manufacturerStatusOther;
+
+    @Column(name = "manufacturer_type", length = 100)
+    private String manufacturerType;
+
+    @Column(name = "manufacturer_type_other", length = 255)
+    private String manufacturerTypeOther;
 
     @Column(name = "manufacturer_details", columnDefinition = "TEXT")
     private String manufacturerDetails;
+    // ────────────────────────────────────────────────────────────────────────
 
     @Column(name = "updated_at")
     @UpdateTimestamp

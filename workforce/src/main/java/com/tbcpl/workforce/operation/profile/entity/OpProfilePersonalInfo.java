@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.Gender;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -29,12 +28,16 @@ public class OpProfilePersonalInfo {
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
-    @Column(name = "last_name", nullable = true, length = 100)
+    @Column(name = "last_name", length = 100)
     private String lastName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "gender", nullable = false, length = 10)
-    private Gender gender;
+    // ── Was: @Enumerated Gender gender ──────────────────────────────────────
+    @Column(name = "gender", nullable = false, length = 100)
+    private String gender;
+
+    @Column(name = "gender_other", length = 255)
+    private String genderOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     @Column(name = "middle_name", length = 100)
     private String middleName;

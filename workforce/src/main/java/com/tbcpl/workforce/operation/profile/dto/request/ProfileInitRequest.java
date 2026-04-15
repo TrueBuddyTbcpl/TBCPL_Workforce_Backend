@@ -1,8 +1,6 @@
 package com.tbcpl.workforce.operation.profile.dto.request;
 
-import com.tbcpl.workforce.operation.profile.enums.Gender;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -19,8 +17,12 @@ public class ProfileInitRequest {
     @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastName;
 
-    @NotNull(message = "Gender is mandatory")
-    private Gender gender;
+    // ── Was: @NotNull Gender gender ──────────────────────────────────────────
+    @NotBlank(message = "Gender is mandatory")
+    private String gender;
+
+    private String genderOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     private String dateOfBirth;
 
@@ -30,5 +32,5 @@ public class ProfileInitRequest {
     @Size(max = 100, message = "Nationality must not exceed 100 characters")
     private String nationality;
 
-    private String profilePhoto; // Cloudinary URL after upload
+    private String profilePhoto;
 }

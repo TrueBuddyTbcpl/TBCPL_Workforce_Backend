@@ -2,8 +2,8 @@ package com.tbcpl.workforce.operation.profile.service;
 
 import com.tbcpl.workforce.auth.entity.Employee;
 import com.tbcpl.workforce.auth.service.EmployeeService;
+import com.tbcpl.workforce.common.constants.DropdownFieldNames;
 import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
-import com.tbcpl.workforce.common.util.EnumUtils;
 import com.tbcpl.workforce.common.util.S3Service;
 import com.tbcpl.workforce.operation.profile.dto.request.*;
 import com.tbcpl.workforce.operation.profile.dto.response.*;
@@ -18,10 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-
-
-
+import com.tbcpl.workforce.operation.customoption.service.OpDropdownService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -35,32 +32,61 @@ import java.util.Optional;
 @Slf4j
 public class OpProfileServiceImpl implements OpProfileService {
 
-    private final OpProfileRepository profileRepository;
-    private final OpProfilePersonalInfoRepository personalInfoRepository;
-    private final OpProfileAddressRepository addressRepository;
-    private final OpProfileContactInfoRepository contactInfoRepository;
+    private final OpProfileRepository                   profileRepository;
+    private final OpProfilePersonalInfoRepository       personalInfoRepository;
+    private final OpProfileAddressRepository            addressRepository;
+    private final OpProfileContactInfoRepository        contactInfoRepository;
     private final OpProfileIdentificationDocsRepository identificationDocsRepository;
     private final OpProfileBusinessActivitiesRepository businessActivitiesRepository;
     private final OpProfileGeographicExposureRepository geographicExposureRepository;
-    private final OpProfileAssociatedCompanyRepository associatedCompanyRepository;
-    private final OpProfileFirRepository firRepository;
-    private final OpProfileMaterialSeizedRepository materialSeizedRepository;
-    private final OpProfileVehicleRepository vehicleRepository;
-    private final OpProfileAssociateRepository associateRepository;
-    private final OpProfileInfluentialLinkRepository influentialLinkRepository;
-    private final OpProfileProductInfringedRepository productInfringedRepository;
+    private final OpProfileAssociatedCompanyRepository  associatedCompanyRepository;
+    private final OpProfileFirRepository                firRepository;
+    private final OpProfileMaterialSeizedRepository     materialSeizedRepository;
+    private final OpProfileVehicleRepository            vehicleRepository;
+    private final OpProfileAssociateRepository          associateRepository;
+    private final OpProfileInfluentialLinkRepository    influentialLinkRepository;
+    private final OpProfileProductInfringedRepository   productInfringedRepository;
     private final OpProfileProductsOperationsRepository productsOperationsRepository;
-    private final OpProfileFamilyBackgroundRepository familyBackgroundRepository;
-    private final OpProfileSiblingRepository siblingRepository;
-    private final OpProfileCurrentStatusRepository currentStatusRepository;
-    private final OpProfileAdditionalInfoRepository additionalInfoRepository;
-    private final OpProfileStepStatusRepository stepStatusRepository;
-    private final OpProfileChangeLogRepository changeLogRepository;
-    private final EmployeeService employeeService;
-    private final S3Service s3Service;
+    private final OpProfileFamilyBackgroundRepository   familyBackgroundRepository;
+    private final OpProfileSiblingRepository            siblingRepository;
+    private final OpProfileCurrentStatusRepository      currentStatusRepository;
+    private final OpProfileAdditionalInfoRepository     additionalInfoRepository;
+    private final OpProfileStepStatusRepository         stepStatusRepository;
+    private final OpProfileChangeLogRepository          changeLogRepository;
+    private final EmployeeService                       employeeService;
+    private final S3Service                             s3Service;
+    private final OpDropdownService                     dropdownService;
 
     private static final int TOTAL_STEPS = 17;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DROPDOWN HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Normalizes the selected dropdown value to UPPER_CASE.
+     * If value == "OTHER" and customText is present, persists customText into
+     * the master custom-option table for that field, then returns "OTHER".
+     */
+    private String resolveDropdown(String fieldName, String value, String otherText, String empId) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.trim().toUpperCase();
+        if ("OTHER".equals(normalized) && otherText != null && !otherText.isBlank()) {
+            dropdownService.persistCustomOption(fieldName, otherText.trim(), empId);
+        }
+        return normalized;
+    }
+
+    /**
+     * Returns the companion "other" text only when the selected value is OTHER.
+     * Prevents storing stale other-text when the user later switches back to a
+     * standard option.
+     */
+    private String resolveOtherText(String value, String otherText) {
+        if ("OTHER".equalsIgnoreCase(value)) return (otherText != null ? otherText.trim() : null);
+        return null;
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // AUTHORIZATION CHECK
@@ -71,16 +97,13 @@ public class OpProfileServiceImpl implements OpProfileService {
         String dept = employee.getDepartment().getDepartmentName().toUpperCase();
         String role = employee.getRole().getRoleName().toUpperCase();
 
-        // Operational access: ADMIN or OPERATION dept with STAFF or ASSOCIATE role
         boolean operationalAccess = (dept.equals("ADMIN") || dept.equals("OPERATION"))
                 && (role.equals("STAFF") || role.equals("ASSOCIATE"));
-
-        // Admin override: ADMIN dept with ADMIN or SUPER_ADMIN role
         boolean adminAccess = dept.equals("ADMIN")
                 && (role.equals("ADMIN") || role.equals("SUPER_ADMIN"));
 
         if (!operationalAccess && !adminAccess) {
-            log.warn("Access denied for empId: {} dept: {} role: {}", empId, dept, role);
+            log.warn("Access denied for empId={} dept={} role={}", empId, dept, role);
             throw new AccessDeniedException(
                     "Access denied. Allowed: ADMIN/OPERATION dept with STAFF/ASSOCIATE role, " +
                             "or ADMIN dept with ADMIN/SUPER_ADMIN role.");
@@ -110,7 +133,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     @Transactional
     public ProfileDetailResponse initProfile(ProfileInitRequest request, String empId) {
         Employee employee = validateAndGetEmployee(empId);
-        log.info("Initializing profile by empId: {}", empId);
+        log.info("Initializing profile by empId={}", empId);
 
         String profileNumber = generateProfileNumber();
         String fullName = buildFullName(request.getFirstName(), request.getMiddleName(), request.getLastName());
@@ -122,34 +145,32 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .createdBy(empId)
                 .updatedBy(empId)
                 .build();
-
         profile = profileRepository.save(profile);
 
-        // Save personal info
+        // ── FIX: resolve gender with Other support ───────────────────────────
+        String resolvedGender    = resolveDropdown(DropdownFieldNames.GENDER, request.getGender(), request.getGenderOther(), empId);
+        String resolvedGenderOther = resolveOtherText(request.getGender(), request.getGenderOther());
+
         OpProfilePersonalInfo personalInfo = OpProfilePersonalInfo.builder()
                 .profile(profile)
                 .firstName(request.getFirstName().trim())
                 .lastName(request.getLastName() != null ? request.getLastName().trim() : null)
-                .gender(request.getGender())
+                .gender(resolvedGender)
+                .genderOther(resolvedGenderOther)
                 .middleName(request.getMiddleName())
                 .dateOfBirth(parseDate(request.getDateOfBirth()))
                 .bloodGroup(request.getBloodGroup())
                 .nationality(request.getNationality())
                 .profilePhoto(request.getProfilePhoto())
                 .build();
-
         personalInfoRepository.save(personalInfo);
 
         initializeStepStatuses(profile);
-
-        // Update step 1 status
         updateStepStatus(profile.getId(), 1, "PERSONAL_INFO", evaluateStep1Status(request));
-
-        // Log creation
         saveChangeLog(profile, empId, employee.getFullName(), "PERSONAL_INFO",
                 ChangeAction.CREATED, "profile", null, profileNumber);
+        log.info("Profile {} created by {}", profileNumber, empId);
 
-        log.info("Profile created: {} by {}", profileNumber, empId);
         return buildProfileDetailResponse(profile.getId());
     }
 
@@ -163,30 +184,28 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .findByProfileId(profileId)
                 .orElse(OpProfilePersonalInfo.builder().profile(profile).build());
 
+        // ── FIX: resolve gender with Other support ───────────────────────────
         entity.setFirstName(request.getFirstName().trim());
         entity.setMiddleName(request.getMiddleName());
         entity.setLastName(request.getLastName() != null ? request.getLastName().trim() : null);
-        entity.setGender(request.getGender());
+        entity.setGender(resolveDropdown(DropdownFieldNames.GENDER, request.getGender(), request.getGenderOther(), empId));
+        entity.setGenderOther(resolveOtherText(request.getGender(), request.getGenderOther()));
         entity.setDateOfBirth(parseDate(request.getDateOfBirth()));
         entity.setBloodGroup(request.getBloodGroup());
         entity.setNationality(request.getNationality());
         entity.setProfilePhoto(request.getProfilePhoto());
-
         personalInfoRepository.save(entity);
 
         String fullName = buildFullName(request.getFirstName(), request.getMiddleName(), request.getLastName());
         profile.setName(fullName);
         updateProfileUpdatedBy(profile, empId);
-
         updateStepStatus(profileId, 1, "PERSONAL_INFO", evaluateStep1Status(request));
-
         saveChangeLog(profile, empId, employee.getFullName(), "PERSONAL_INFO",
                 ChangeAction.UPDATED, "personal_info", null, "updated");
+        log.info("Personal info updated for profileId={} by empId={}", profileId, empId);
 
-        log.info("Personal info updated for profileId: {} by empId: {}", profileId, empId);
         return buildProfileDetailResponse(profileId);
     }
-
 
     // ─────────────────────────────────────────────────────────────────────────
     // STEP 2 — ADDRESS
@@ -225,7 +244,6 @@ public class OpProfileServiceImpl implements OpProfileService {
             entity.setPermPincode(request.getPermPincode());
             entity.setPermCountry(request.getPermCountry());
         }
-
         addressRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
         updateStepStatus(profileId, 2, "ADDRESS", evaluateAddressStep(request));
@@ -256,7 +274,6 @@ public class OpProfileServiceImpl implements OpProfileService {
         entity.setEmergencyContactName(request.getEmergencyContactName());
         entity.setEmergencyContactPhone(request.getEmergencyContactPhone());
         entity.setEmergencyContactRelation(request.getEmergencyContactRelation());
-
         contactInfoRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
         updateStepStatus(profileId, 3, "CONTACT_INFO", evaluateContactStep(request));
@@ -292,7 +309,6 @@ public class OpProfileServiceImpl implements OpProfileService {
         entity.setOtherIdType(request.getOtherIdType());
         entity.setOtherIdNumber(request.getOtherIdNumber());
         entity.setOtherIdPhoto(request.getOtherIdPhoto());
-
         identificationDocsRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
         updateStepStatus(profileId, 4, "IDENTIFICATION_DOCS", evaluateIdentificationStep(request));
@@ -316,15 +332,25 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .findByProfileId(profileId)
                 .orElse(OpProfileBusinessActivities.builder().profile(profile).build());
 
-        entity.setRetailerStatus(request.getRetailerStatus());
-        entity.setRetailerType(request.getRetailerType());
+        // ── FIX: resolve all 6 dropdown fields with Other support ────────────
+        entity.setRetailerStatus(resolveDropdown(DropdownFieldNames.BUSINESS_ENTITY_STATUS, request.getRetailerStatus(), request.getRetailerStatusOther(), empId));
+        entity.setRetailerStatusOther(resolveOtherText(request.getRetailerStatus(), request.getRetailerStatusOther()));
+        entity.setRetailerType(resolveDropdown(DropdownFieldNames.AUTHORIZATION_STATUS, request.getRetailerType(), request.getRetailerTypeOther(), empId));
+        entity.setRetailerTypeOther(resolveOtherText(request.getRetailerType(), request.getRetailerTypeOther()));
         entity.setRetailerDetails(request.getRetailerDetails());
-        entity.setSupplierStatus(request.getSupplierStatus());
-        entity.setSupplierType(request.getSupplierType());
+
+        entity.setSupplierStatus(resolveDropdown(DropdownFieldNames.BUSINESS_ENTITY_STATUS, request.getSupplierStatus(), request.getSupplierStatusOther(), empId));
+        entity.setSupplierStatusOther(resolveOtherText(request.getSupplierStatus(), request.getSupplierStatusOther()));
+        entity.setSupplierType(resolveDropdown(DropdownFieldNames.AUTHORIZATION_STATUS, request.getSupplierType(), request.getSupplierTypeOther(), empId));
+        entity.setSupplierTypeOther(resolveOtherText(request.getSupplierType(), request.getSupplierTypeOther()));
         entity.setSupplierDetails(request.getSupplierDetails());
-        entity.setManufacturerStatus(request.getManufacturerStatus());
-        entity.setManufacturerType(request.getManufacturerType());
+
+        entity.setManufacturerStatus(resolveDropdown(DropdownFieldNames.BUSINESS_ENTITY_STATUS, request.getManufacturerStatus(), request.getManufacturerStatusOther(), empId));
+        entity.setManufacturerStatusOther(resolveOtherText(request.getManufacturerStatus(), request.getManufacturerStatusOther()));
+        entity.setManufacturerType(resolveDropdown(DropdownFieldNames.AUTHORIZATION_STATUS, request.getManufacturerType(), request.getManufacturerTypeOther(), empId));
+        entity.setManufacturerTypeOther(resolveOtherText(request.getManufacturerType(), request.getManufacturerTypeOther()));
         entity.setManufacturerDetails(request.getManufacturerDetails());
+        // ────────────────────────────────────────────────────────────────────
 
         businessActivitiesRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
@@ -336,7 +362,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 6 — ENTITY & ORGANIZATION
+    // STEP 6 — ENTITY ORGANIZATION
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -347,21 +373,21 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         associatedCompanyRepository.deleteByProfileId(profileId);
 
-        // Null-safe: treat null list same as empty list
         List<AssociatedCompanyRequest> incoming = request.getAssociatedCompanies() != null
-                ? request.getAssociatedCompanies()
-                : new ArrayList<>();
+                ? request.getAssociatedCompanies() : new ArrayList<>();
 
+        // ── FIX: was EnumUtils.parse(RelationshipNature.class, ...) → now resolveDropdown ──
         List<OpProfileAssociatedCompany> companies = incoming.stream()
                 .filter(c -> c.getCompanyName() != null && !c.getCompanyName().isBlank())
                 .map(c -> OpProfileAssociatedCompany.builder()
                         .profile(profile)
                         .companyName(c.getCompanyName())
-                        .relationshipNature(EnumUtils.parse(RelationshipNature.class, c.getRelationshipNature(), null))
-
+                        .relationshipNature(resolveDropdown(DropdownFieldNames.RELATIONSHIP_NATURE, c.getRelationshipNature(), c.getRelationshipNatureOther(), empId))
+                        .relationshipNatureOther(resolveOtherText(c.getRelationshipNature(), c.getRelationshipNatureOther()))
                         .details(c.getDetails())
                         .build())
                 .toList();
+        // ────────────────────────────────────────────────────────────────────
 
         associatedCompanyRepository.saveAll(companies);
         updateProfileUpdatedBy(profile, empId);
@@ -390,7 +416,6 @@ public class OpProfileServiceImpl implements OpProfileService {
         entity.setOperatingRegions(request.getOperatingRegions());
         entity.setMarkets(request.getMarkets());
         entity.setJurisdictions(request.getJurisdictions());
-
         geographicExposureRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
         updateStepStatus(profileId, 7, "GEOGRAPHIC_EXPOSURE", evaluateGeoStep(request));
@@ -412,11 +437,9 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         firRepository.deleteByProfileId(profileId);
 
-        // Null-safe: treat null list same as empty list
-        List<FirRequest> incoming = request.getFirs() != null
-                ? request.getFirs()
-                : new ArrayList<>();
+        List<FirRequest> incoming = request.getFirs() != null ? request.getFirs() : new ArrayList<>();
 
+        // ── FIX: was EnumUtils.parse(FirStatus.class, f.getStatus, FirStatus.NA) ──
         List<OpProfileFir> firs = incoming.stream()
                 .filter(f -> f.getFirNumber() != null && !f.getFirNumber().isBlank())
                 .map(f -> OpProfileFir.builder()
@@ -425,10 +448,11 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .caseNumber(f.getCaseNumber())
                         .sections(f.getSections() != null ? f.getSections() : new ArrayList<>())
                         .dateRegistered(parseDate(f.getDateRegistered()))
-                        .status(EnumUtils.parse(FirStatus.class, f.getStatus(), FirStatus.N_A))
-
+                        .status(resolveDropdown(DropdownFieldNames.FIR_STATUS, f.getStatus(), f.getStatusOther(), empId))
+                        .statusOther(resolveOtherText(f.getStatus(), f.getStatusOther()))
                         .build())
                 .toList();
+        // ────────────────────────────────────────────────────────────────────
 
         firRepository.saveAll(firs);
         updateProfileUpdatedBy(profile, empId);
@@ -452,11 +476,10 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         materialSeizedRepository.deleteByProfileId(profileId);
 
-        // Null-safe: treat null list same as empty list
         List<MaterialSeizedItemRequest> incoming = request.getMaterialSeized() != null
-                ? request.getMaterialSeized()
-                : new ArrayList<>();
+                ? request.getMaterialSeized() : new ArrayList<>();
 
+        // ── FIX: was EnumUtils.parse(RaidingAuthority.class, ...) ───────────
         List<OpProfileMaterialSeized> items = incoming.stream()
                 .filter(m -> m.getBrandName() != null && !m.getBrandName().isBlank())
                 .map(m -> OpProfileMaterialSeized.builder()
@@ -465,11 +488,12 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .company(m.getCompany())
                         .quantity(m.getQuantity())
                         .location(m.getLocation())
-                        .raidingAuthority(EnumUtils.parse(RaidingAuthority.class, m.getRaidingAuthority(), RaidingAuthority.N_A))
-                        .raidingAuthorityOther(m.getRaidingAuthorityOther())
+                        .raidingAuthority(resolveDropdown(DropdownFieldNames.RAIDING_AUTHORITY, m.getRaidingAuthority(), m.getRaidingAuthorityOther(), empId))
+                        .raidingAuthorityOther(resolveOtherText(m.getRaidingAuthority(), m.getRaidingAuthorityOther()))
                         .dateSeized(parseDate(m.getDateSeized()))
                         .build())
                 .toList();
+        // ────────────────────────────────────────────────────────────────────
 
         materialSeizedRepository.saveAll(items);
         updateProfileUpdatedBy(profile, empId);
@@ -482,7 +506,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 10 — ASSETS (VEHICLES)
+    // STEP 10 — ASSETS / VEHICLES
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -493,11 +517,10 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         vehicleRepository.deleteByProfileId(profileId);
 
-        // Null-safe: treat null list same as empty list
         List<VehicleRequest> incoming = request.getVehicles() != null
-                ? request.getVehicles()
-                : new ArrayList<>();
+                ? request.getVehicles() : new ArrayList<>();
 
+        // ── FIX: was EnumUtils.parse(VehicleOwnershipType.class, ...) ────────
         List<OpProfileVehicle> vehicles = incoming.stream()
                 .filter(v -> v.getMake() != null && !v.getMake().isBlank())
                 .map(v -> OpProfileVehicle.builder()
@@ -505,9 +528,11 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .make(v.getMake())
                         .model(v.getModel())
                         .registrationNumber(v.getRegistrationNumber())
-                        .ownershipType(EnumUtils.parse(VehicleOwnershipType.class, v.getOwnershipType(), VehicleOwnershipType.N_A))
+                        .ownershipType(resolveDropdown(DropdownFieldNames.VEHICLE_OWNERSHIP_TYPE, v.getOwnershipType(), v.getOwnershipTypeOther(), empId))
+                        .ownershipTypeOther(resolveOtherText(v.getOwnershipType(), v.getOwnershipTypeOther()))
                         .build())
                 .toList();
+        // ────────────────────────────────────────────────────────────────────
 
         vehicleRepository.saveAll(vehicles);
         updateProfileUpdatedBy(profile, empId);
@@ -529,30 +554,32 @@ public class OpProfileServiceImpl implements OpProfileService {
         Employee employee = validateAndGetEmployee(empId);
         OpProfile profile = getActiveProfile(profileId);
 
-        // Delete only non-EMPLOYEE role entries
+        // ── FIX: was a.getRole() != AssociateRole.EMPLOYEE ───────────────────
         List<OpProfileAssociate> existing = associateRepository.findByProfileId(profileId);
         List<Long> toDelete = existing.stream()
-                .filter(a -> a.getRole() != AssociateRole.EMPLOYEE)
+                .filter(a -> !"EMPLOYEE".equals(a.getRole()))
                 .map(OpProfileAssociate::getId)
                 .toList();
         associateRepository.deleteAllById(toDelete);
+        // ────────────────────────────────────────────────────────────────────
 
-        // Null-safe: treat null list same as empty list
         List<AssociateRequest> incoming = request.getKnownAssociates() != null
-                ? request.getKnownAssociates()
-                : new ArrayList<>();
+                ? request.getKnownAssociates() : new ArrayList<>();
 
+        // ── FIX: was EnumUtils.parse(AssociateRole.class, a.getRole, AssociateRole.NA) ──
         List<OpProfileAssociate> associates = incoming.stream()
                 .filter(a -> a.getName() != null && !a.getName().isBlank())
                 .map(a -> OpProfileAssociate.builder()
                         .profile(profile)
                         .name(a.getName())
                         .relationship(a.getRelationship())
-                        .role(EnumUtils.parse(AssociateRole.class, a.getRole(), AssociateRole.N_A))
+                        .role(resolveDropdown(DropdownFieldNames.ASSOCIATE_ROLE, a.getRole(), a.getRoleOther(), empId))
+                        .roleOther(resolveOtherText(a.getRole(), a.getRoleOther()))
                         .contactInfo(a.getContactInfo())
                         .notes(a.getNotes())
                         .build())
                 .toList();
+        // ────────────────────────────────────────────────────────────────────
 
         associateRepository.saveAll(associates);
         updateProfileUpdatedBy(profile, empId);
@@ -574,30 +601,33 @@ public class OpProfileServiceImpl implements OpProfileService {
         Employee employee = validateAndGetEmployee(empId);
         OpProfile profile = getActiveProfile(profileId);
 
-        // Delete only EMPLOYEE role entries
+        // ── FIX: was a.getRole() == AssociateRole.EMPLOYEE ───────────────────
         List<OpProfileAssociate> existing = associateRepository.findByProfileId(profileId);
         List<Long> toDelete = existing.stream()
-                .filter(a -> a.getRole() == AssociateRole.EMPLOYEE)
+                .filter(a -> "EMPLOYEE".equals(a.getRole()))
                 .map(OpProfileAssociate::getId)
                 .toList();
         associateRepository.deleteAllById(toDelete);
+        // ────────────────────────────────────────────────────────────────────
 
-        // Null-safe: treat null list same as empty list
         List<AssociateRequest> incoming = request.getKnownEmployees() != null
-                ? request.getKnownEmployees()
-                : new ArrayList<>();
+                ? request.getKnownEmployees() : new ArrayList<>();
 
+        // ── FIX: was EnumUtils.parse(AssociateRole.class, e.getRole, AssociateRole.EMPLOYEE)
+        //         Employees always get role = "EMPLOYEE" (forced) ───────────────
         List<OpProfileAssociate> employees = incoming.stream()
                 .filter(e -> e.getName() != null && !e.getName().isBlank())
                 .map(e -> OpProfileAssociate.builder()
                         .profile(profile)
                         .name(e.getName())
                         .relationship(e.getRelationship())
-                        .role(EnumUtils.parse(AssociateRole.class, e.getRole(), AssociateRole.EMPLOYEE))
+                        .role("EMPLOYEE")          // always forced for known employees
+                        .roleOther(null)
                         .contactInfo(e.getContactInfo())
                         .notes(e.getNotes())
                         .build())
                 .toList();
+        // ────────────────────────────────────────────────────────────────────
 
         associateRepository.saveAll(employees);
         updateProfileUpdatedBy(profile, empId);
@@ -610,7 +640,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 13 — PRODUCTS & OPERATIONS
+    // STEP 13 — PRODUCTS / OPERATIONS
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -619,11 +649,8 @@ public class OpProfileServiceImpl implements OpProfileService {
         Employee employee = validateAndGetEmployee(empId);
         OpProfile profile = getActiveProfile(profileId);
 
-        // Null-safe: treat null list same as empty list
         List<ProductInfringedRequest> incomingProducts = request.getProductsInfringed() != null
-                ? request.getProductsInfringed()
-                : new ArrayList<>();
-
+                ? request.getProductsInfringed() : new ArrayList<>();
         productInfringedRepository.deleteByProfileId(profileId);
 
         List<OpProfileProductInfringed> products = incomingProducts.stream()
@@ -635,19 +662,13 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .productType(p.getProductType())
                         .build())
                 .toList();
-
         productInfringedRepository.saveAll(products);
 
-        // Save operations details
         OpProfileProductsOperations ops = productsOperationsRepository
                 .findByProfileId(profileId)
                 .orElse(OpProfileProductsOperations.builder().profile(profile).build());
-
         ops.setKnownModusOperandi(request.getKnownModusOperandi());
-        ops.setKnownLocations(request.getKnownLocations() != null
-                ? request.getKnownLocations()
-                : new ArrayList<>());
-
+        ops.setKnownLocations(request.getKnownLocations() != null ? request.getKnownLocations() : new ArrayList<>());
         productsOperationsRepository.save(ops);
 
         updateProfileUpdatedBy(profile, empId);
@@ -681,19 +702,22 @@ public class OpProfileServiceImpl implements OpProfileService {
         entity.setMotherContact(request.getMotherContact());
         familyBackgroundRepository.save(entity);
 
-        // Save siblings
         siblingRepository.deleteByProfileId(profileId);
+
+        // ── FIX: was s.getRelationship() direct — now resolveDropdown ────────
         List<OpProfileSibling> siblings = request.getSiblings().stream()
                 .filter(s -> s.getName() != null && !s.getName().isBlank())
                 .map(s -> OpProfileSibling.builder()
                         .profile(profile)
                         .name(s.getName())
-                        .relationship(s.getRelationship())
+                        .relationship(resolveDropdown(DropdownFieldNames.SIBLING_RELATIONSHIP, s.getRelationship(), s.getRelationshipOther(), empId))
+                        .relationshipOther(resolveOtherText(s.getRelationship(), s.getRelationshipOther()))
                         .occupation(s.getOccupation())
                         .build())
                 .toList();
-        siblingRepository.saveAll(siblings);
+        // ────────────────────────────────────────────────────────────────────
 
+        siblingRepository.saveAll(siblings);
         updateProfileUpdatedBy(profile, empId);
         updateStepStatus(profileId, 14, "FAMILY_BACKGROUND", evaluateFamilyStep(request));
         saveChangeLog(profile, empId, employee.getFullName(), "FAMILY_BACKGROUND",
@@ -714,10 +738,8 @@ public class OpProfileServiceImpl implements OpProfileService {
 
         influentialLinkRepository.deleteByProfileId(profileId);
 
-        // Null-safe: treat null list same as empty list
         List<InfluentialLinkRequest> incoming = request.getInfluentialLinks() != null
-                ? request.getInfluentialLinks()
-                : new ArrayList<>();
+                ? request.getInfluentialLinks() : new ArrayList<>();
 
         List<OpProfileInfluentialLink> links = incoming.stream()
                 .filter(l -> l.getPersonName() != null && !l.getPersonName().isBlank())
@@ -740,7 +762,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 16 — CURRENT STATUS (mapped frontend step 15)
+    // STEP 16 — CURRENT STATUS
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -758,12 +780,10 @@ public class OpProfileServiceImpl implements OpProfileService {
         entity.setStatusDate(parseDate(request.getStatusDate()));
         entity.setRemarks(request.getRemarks());
 
-        // Mirror status to master profile
         if (request.getStatus() != null) {
             profile.setStatus(request.getStatus());
             profileRepository.save(profile);
         }
-
         currentStatusRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
         updateStepStatus(profileId, 16, "CURRENT_STATUS", evaluateCurrentStatusStep(request));
@@ -774,7 +794,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 17 — ADDITIONAL INFO (mapped frontend step 16)
+    // STEP 17 — ADDITIONAL INFO
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
@@ -787,13 +807,16 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .findByProfileId(profileId)
                 .orElse(OpProfileAdditionalInfo.builder().profile(profile).build());
 
+        // ── FIX: was entity.setRiskLevel(request.getRiskLevel()) with enum ───
         entity.setNotes(request.getNotes());
         entity.setBehavioralNotes(request.getBehavioralNotes());
-        entity.setRiskLevel(request.getRiskLevel());
+        entity.setRiskLevel(resolveDropdown(DropdownFieldNames.RISK_LEVEL, request.getRiskLevel(), request.getRiskLevelOther(), empId));
+        entity.setRiskLevelOther(resolveOtherText(request.getRiskLevel(), request.getRiskLevelOther()));
         entity.setTags(request.getTags());
         entity.setAdditionalPhotos(request.getAdditionalPhotos());
         entity.setAttachments(request.getAttachments());
         entity.setLinkedCases(request.getLinkedCases());
+        // ────────────────────────────────────────────────────────────────────
 
         additionalInfoRepository.save(entity);
         updateProfileUpdatedBy(profile, empId);
@@ -867,7 +890,6 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .newValue(l.getNewValue())
                         .build())
                 .toList();
-
         return ChangeLogPagedResponse.builder()
                 .logs(logs)
                 .totalElements(page.getTotalElements())
@@ -893,20 +915,17 @@ public class OpProfileServiceImpl implements OpProfileService {
         profileRepository.save(profile);
         saveChangeLog(profile, empId, employee.getFullName(), "PROFILE",
                 ChangeAction.DELETED, "is_deleted", "false", "true");
-        log.info("Profile soft deleted: {} by {}", profile.getProfileNumber(), empId);
+        log.info("Profile {} soft deleted by {}", profile.getProfileNumber(), empId);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // IMAGE UPLOAD
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ✅ FIXED — uses existing uploadFile method + maps to ImageUploadResponse
     @Override
     public ImageUploadResponse uploadImage(MultipartFile file, String folder) {
         try {
-            Map<String, String> result = s3Service.uploadFile(file,
-                    folder != null ? folder : "profiles");
-
+            Map<String, String> result = s3Service.uploadFile(file, folder != null ? folder : "profiles");
             return ImageUploadResponse.builder()
                     .url(result.get("url"))
                     .publicId(result.get("key"))
@@ -919,7 +938,6 @@ public class OpProfileServiceImpl implements OpProfileService {
         }
     }
 
-
     // ─────────────────────────────────────────────────────────────────────────
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────────────────────────────────
@@ -927,8 +945,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     private OpProfile getActiveProfile(Long profileId) {
         return profileRepository.findById(profileId)
                 .filter(p -> !p.getIsDeleted())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Profile not found with id: " + profileId));
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found with id: " + profileId));
     }
 
     private void updateProfileUpdatedBy(OpProfile profile, String empId) {
@@ -938,13 +955,12 @@ public class OpProfileServiceImpl implements OpProfileService {
 
     private void initializeStepStatuses(OpProfile profile) {
         String[] stepNames = {
-                "PERSONAL_INFO", "ADDRESS", "CONTACT_INFO",
-                "IDENTIFICATION_DOCS", "BUSINESS_ACTIVITIES", "ENTITY_ORGANIZATION",
-                "GEOGRAPHIC_EXPOSURE", "RELATED_FIRS", "MATERIAL_SEIZED", "ASSETS",
-                "KNOWN_ASSOCIATES", "KNOWN_EMPLOYEES", "PRODUCTS_OPERATIONS",
-                "FAMILY_BACKGROUND", "INFLUENTIAL_LINKS", "CURRENT_STATUS", "ADDITIONAL_INFO"
+                "PERSONAL_INFO", "ADDRESS", "CONTACT_INFO", "IDENTIFICATION_DOCS",
+                "BUSINESS_ACTIVITIES", "ENTITY_ORGANIZATION", "GEOGRAPHIC_EXPOSURE",
+                "RELATED_FIRS", "MATERIAL_SEIZED", "ASSETS", "KNOWN_ASSOCIATES",
+                "KNOWN_EMPLOYEES", "PRODUCTS_OPERATIONS", "FAMILY_BACKGROUND",
+                "INFLUENTIAL_LINKS", "CURRENT_STATUS", "ADDITIONAL_INFO"
         };
-
         List<OpProfileStepStatus> statuses = new ArrayList<>();
         for (int i = 0; i < stepNames.length; i++) {
             statuses.add(OpProfileStepStatus.builder()
@@ -972,7 +988,7 @@ public class OpProfileServiceImpl implements OpProfileService {
     private void saveChangeLog(OpProfile profile, String empId, String empName,
                                String stepName, ChangeAction action,
                                String fieldName, String oldValue, String newValue) {
-        OpProfileChangeLog log = OpProfileChangeLog.builder()
+        changeLogRepository.save(OpProfileChangeLog.builder()
                 .profile(profile)
                 .changedBy(empId)
                 .changedByName(empName)
@@ -981,16 +997,13 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .fieldName(fieldName)
                 .oldValue(oldValue)
                 .newValue(newValue)
-                .build();
-        changeLogRepository.save(log);
+                .build());
     }
 
     private String buildFullName(String first, String middle, String last) {
         StringBuilder name = new StringBuilder(first.trim());
-        if (middle != null && !middle.isBlank())
-            name.append(" ").append(middle.trim());
-        if (last != null && !last.isBlank())         // ← null-safe
-            name.append(" ").append(last.trim());
+        if (middle != null && !middle.isBlank()) name.append(" ").append(middle.trim());
+        if (last != null && !last.isBlank()) name.append(" ").append(last.trim());
         return name.toString();
     }
 
@@ -1008,81 +1021,67 @@ public class OpProfileServiceImpl implements OpProfileService {
     // STEP STATUS EVALUATORS
     // ─────────────────────────────────────────────────────────────────────────
 
-    // AFTER — COMPLETED when firstName + gender are filled (mandatory fields only)
     private StepStatus evaluateStep1Status(ProfileInitRequest request) {
-        boolean firstNameFilled = request.getFirstName() != null
-                && !request.getFirstName().isBlank();
-        boolean genderFilled = request.getGender() != null;
-
-        if (firstNameFilled && genderFilled) {
-            return StepStatus.COMPLETED;
-        }
-        if (firstNameFilled) {
-            return StepStatus.HALF_FILLED;
-        }
+        boolean firstNameFilled = request.getFirstName() != null && !request.getFirstName().isBlank();
+        // ── FIX: gender is now String, null check is sufficient ─────────────
+        boolean genderFilled    = request.getGender() != null && !request.getGender().isBlank();
+        if (firstNameFilled && genderFilled) return StepStatus.COMPLETED;
+        if (firstNameFilled)                return StepStatus.HALF_FILLED;
         return StepStatus.NOT_FILLED;
     }
 
-
-
-
     private StepStatus evaluateAddressStep(AddressRequest r) {
-        long filled = countNonNull(r.getAddressLine1(), r.getCity(), r.getState(),
-                r.getPincode(), r.getCountry());
-        if (filled == 0) return StepStatus.NOT_FILLED;
-        if (filled == 5) return StepStatus.COMPLETED;
+        long filled = countNonNull(r.getAddressLine1(), r.getCity(), r.getState(), r.getPincode(), r.getCountry());
+        if (filled == 0)  return StepStatus.NOT_FILLED;
+        if (filled == 5)  return StepStatus.COMPLETED;
         return StepStatus.HALF_FILLED;
     }
 
     private StepStatus evaluateContactStep(ContactInfoRequest r) {
-        long filled = countNonNull(r.getPrimaryPhone(), r.getSecondaryPhone(),
-                r.getPrimaryEmail(), r.getSecondaryEmail(), r.getEmergencyContactName(),
+        long filled = countNonNull(r.getPrimaryPhone(), r.getSecondaryPhone(), r.getPrimaryEmail(),
+                r.getSecondaryEmail(), r.getEmergencyContactName(),
                 r.getEmergencyContactPhone(), r.getEmergencyContactRelation());
-        if (filled == 0) return StepStatus.NOT_FILLED;
-        if (filled == 7) return StepStatus.COMPLETED;
+        if (filled == 0)  return StepStatus.NOT_FILLED;
+        if (filled == 7)  return StepStatus.COMPLETED;
         return StepStatus.HALF_FILLED;
     }
 
     private StepStatus evaluateIdentificationStep(IdentificationDocsRequest r) {
         long filled = countNonNull(r.getAadhaarNumber(), r.getPanNumber(),
                 r.getDrivingLicense(), r.getPassportNumber(), r.getOtherIdNumber());
-        if (filled == 0) return StepStatus.NOT_FILLED;
-        if (filled >= 3) return StepStatus.COMPLETED;
+        if (filled == 0)  return StepStatus.NOT_FILLED;
+        if (filled >= 3)  return StepStatus.COMPLETED;
         return StepStatus.HALF_FILLED;
     }
 
     private StepStatus evaluateBusinessStep(BusinessActivitiesRequest r) {
         long filled = countNonNull(r.getRetailerStatus(), r.getSupplierStatus(), r.getManufacturerStatus());
-        if (filled == 0) return StepStatus.NOT_FILLED;
-        if (filled == 3) return StepStatus.COMPLETED;
+        if (filled == 0)  return StepStatus.NOT_FILLED;
+        if (filled == 3)  return StepStatus.COMPLETED;
         return StepStatus.HALF_FILLED;
     }
 
     private StepStatus evaluateGeoStep(GeographicExposureRequest r) {
-        boolean anyFilled = !r.getOperatingRegions().isEmpty()
-                || !r.getMarkets().isEmpty()
-                || !r.getJurisdictions().isEmpty();
-        boolean allFilled = !r.getOperatingRegions().isEmpty()
-                && !r.getMarkets().isEmpty()
-                && !r.getJurisdictions().isEmpty();
+        boolean anyFilled = !r.getOperatingRegions().isEmpty() || !r.getMarkets().isEmpty() || !r.getJurisdictions().isEmpty();
+        boolean allFilled = !r.getOperatingRegions().isEmpty() && !r.getMarkets().isEmpty() && !r.getJurisdictions().isEmpty();
         if (!anyFilled) return StepStatus.NOT_FILLED;
-        if (allFilled) return StepStatus.COMPLETED;
+        if (allFilled)  return StepStatus.COMPLETED;
         return StepStatus.HALF_FILLED;
     }
 
     private StepStatus evaluateProductsOpsStep(ProductsOperationsRequest r,
                                                List<OpProfileProductInfringed> saved) {
         boolean hasProducts = !saved.isEmpty();
-        boolean hasModus = r.getKnownModusOperandi() != null && !r.getKnownModusOperandi().isBlank();
+        boolean hasModus    = r.getKnownModusOperandi() != null && !r.getKnownModusOperandi().isBlank();
         if (!hasProducts && !hasModus) return StepStatus.NOT_FILLED;
-        if (hasProducts && hasModus) return StepStatus.COMPLETED;
+        if (hasProducts && hasModus)   return StepStatus.COMPLETED;
         return StepStatus.HALF_FILLED;
     }
 
     private StepStatus evaluateFamilyStep(FamilyBackgroundRequest r) {
         long filled = countNonNull(r.getFatherName(), r.getMotherName());
-        if (filled == 0) return StepStatus.NOT_FILLED;
-        if (filled == 2) return StepStatus.COMPLETED;
+        if (filled == 0)  return StepStatus.NOT_FILLED;
+        if (filled == 2)  return StepStatus.COMPLETED;
         return StepStatus.HALF_FILLED;
     }
 
@@ -1093,21 +1092,19 @@ public class OpProfileServiceImpl implements OpProfileService {
     }
 
     private StepStatus evaluateAdditionalStep(AdditionalInfoRequest r) {
+        // ── FIX: riskLevel is now String ────────────────────────────────────
         boolean hasNotes = r.getNotes() != null && !r.getNotes().isBlank();
-        boolean hasRisk = r.getRiskLevel() != null;
+        boolean hasRisk  = r.getRiskLevel() != null && !r.getRiskLevel().isBlank();
         if (!hasNotes && !hasRisk) return StepStatus.NOT_FILLED;
-        if (hasNotes && hasRisk) return StepStatus.COMPLETED;
+        if (hasNotes && hasRisk)   return StepStatus.COMPLETED;
         return StepStatus.HALF_FILLED;
     }
 
     private long countNonNull(Object... fields) {
         long count = 0;
         for (Object f : fields) {
-            if (f instanceof String s) {
-                if (!s.isBlank()) count++;
-            } else if (f != null) {
-                count++;
-            }
+            if (f instanceof String s) { if (!s.isBlank()) count++; }
+            else if (f != null)        { count++; }
         }
         return count;
     }
@@ -1119,7 +1116,6 @@ public class OpProfileServiceImpl implements OpProfileService {
     private ProfileDetailResponse buildProfileDetailResponse(Long profileId) {
         OpProfile profile = getActiveProfile(profileId);
 
-        // Personal Info
         PersonalInfoResponse personalInfoResponse = personalInfoRepository
                 .findByProfileId(profileId)
                 .map(p -> PersonalInfoResponse.builder()
@@ -1127,6 +1123,7 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .middleName(p.getMiddleName())
                         .lastName(p.getLastName())
                         .gender(p.getGender())
+                        .genderOther(p.getGenderOther())           // ← NEW
                         .dateOfBirth(p.getDateOfBirth())
                         .bloodGroup(p.getBloodGroup())
                         .nationality(p.getNationality())
@@ -1134,7 +1131,6 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .build())
                 .orElse(null);
 
-        // Address
         AddressResponse addressResponse = addressRepository
                 .findByProfileId(profileId)
                 .map(a -> AddressResponse.builder()
@@ -1142,28 +1138,23 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .city(a.getCity()).state(a.getState())
                         .pincode(a.getPincode()).country(a.getCountry())
                         .permanentSameAsCurrent(a.getPermanentSameAsCurrent())
-                        .permAddressLine1(a.getPermAddressLine1())
-                        .permAddressLine2(a.getPermAddressLine2())
+                        .permAddressLine1(a.getPermAddressLine1()).permAddressLine2(a.getPermAddressLine2())
                         .permCity(a.getPermCity()).permState(a.getPermState())
                         .permPincode(a.getPermPincode()).permCountry(a.getPermCountry())
                         .build())
                 .orElse(null);
 
-        // Contact Info
         ContactInfoResponse contactResponse = contactInfoRepository
                 .findByProfileId(profileId)
                 .map(c -> ContactInfoResponse.builder()
-                        .primaryPhone(c.getPrimaryPhone())
-                        .secondaryPhone(c.getSecondaryPhone())
-                        .primaryEmail(c.getPrimaryEmail())
-                        .secondaryEmail(c.getSecondaryEmail())
+                        .primaryPhone(c.getPrimaryPhone()).secondaryPhone(c.getSecondaryPhone())
+                        .primaryEmail(c.getPrimaryEmail()).secondaryEmail(c.getSecondaryEmail())
                         .emergencyContactName(c.getEmergencyContactName())
                         .emergencyContactPhone(c.getEmergencyContactPhone())
                         .emergencyContactRelation(c.getEmergencyContactRelation())
                         .build())
                 .orElse(null);
 
-        // Identification Docs
         IdentificationDocsResponse idDocsResponse = identificationDocsRepository
                 .findByProfileId(profileId)
                 .map(i -> IdentificationDocsResponse.builder()
@@ -1177,21 +1168,27 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .build())
                 .orElse(null);
 
-        // Business Activities
         BusinessActivitiesResponse businessResponse = businessActivitiesRepository
                 .findByProfileId(profileId)
                 .map(b -> BusinessActivitiesResponse.builder()
-                        .retailerStatus(b.getRetailerStatus()).retailerType(b.getRetailerType())
+                        .retailerStatus(b.getRetailerStatus())
+                        .retailerStatusOther(b.getRetailerStatusOther())    // ← NEW
+                        .retailerType(b.getRetailerType())
+                        .retailerTypeOther(b.getRetailerTypeOther())        // ← NEW
                         .retailerDetails(b.getRetailerDetails())
-                        .supplierStatus(b.getSupplierStatus()).supplierType(b.getSupplierType())
+                        .supplierStatus(b.getSupplierStatus())
+                        .supplierStatusOther(b.getSupplierStatusOther())    // ← NEW
+                        .supplierType(b.getSupplierType())
+                        .supplierTypeOther(b.getSupplierTypeOther())        // ← NEW
                         .supplierDetails(b.getSupplierDetails())
                         .manufacturerStatus(b.getManufacturerStatus())
+                        .manufacturerStatusOther(b.getManufacturerStatusOther())  // ← NEW
                         .manufacturerType(b.getManufacturerType())
+                        .manufacturerTypeOther(b.getManufacturerTypeOther())      // ← NEW
                         .manufacturerDetails(b.getManufacturerDetails())
                         .build())
                 .orElse(null);
 
-        // Geographic Exposure
         GeographicExposureResponse geoResponse = geographicExposureRepository
                 .findByProfileId(profileId)
                 .map(g -> GeographicExposureResponse.builder()
@@ -1201,25 +1198,26 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .build())
                 .orElse(null);
 
-        // Associated Companies
         List<AssociatedCompanyResponse> companies = associatedCompanyRepository
                 .findByProfileId(profileId).stream()
                 .map(c -> AssociatedCompanyResponse.builder()
                         .id(c.getId()).companyName(c.getCompanyName())
-                        .relationshipNature(c.getRelationshipNature()).details(c.getDetails())
+                        .relationshipNature(c.getRelationshipNature())
+                        .relationshipNatureOther(c.getRelationshipNatureOther())  // ← NEW
+                        .details(c.getDetails())
                         .build())
                 .toList();
 
-        // FIRs
         List<FirResponse> firs = firRepository.findByProfileId(profileId).stream()
                 .map(f -> FirResponse.builder()
                         .id(f.getId()).firNumber(f.getFirNumber())
                         .caseNumber(f.getCaseNumber()).sections(f.getSections())
-                        .dateRegistered(f.getDateRegistered()).status(f.getStatus())
+                        .dateRegistered(f.getDateRegistered())
+                        .status(f.getStatus())
+                        .statusOther(f.getStatusOther())                          // ← NEW
                         .build())
                 .toList();
 
-        // Material Seized
         List<MaterialSeizedItemResponse> materialSeized = materialSeizedRepository
                 .findByProfileId(profileId).stream()
                 .map(m -> MaterialSeizedItemResponse.builder()
@@ -1231,25 +1229,24 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .build())
                 .toList();
 
-        // Vehicles
         List<VehicleResponse> vehicles = vehicleRepository.findByProfileId(profileId).stream()
                 .map(v -> VehicleResponse.builder()
                         .id(v.getId()).make(v.getMake()).model(v.getModel())
                         .registrationNumber(v.getRegistrationNumber())
                         .ownershipType(v.getOwnershipType())
+                        .ownershipTypeOther(v.getOwnershipTypeOther())            // ← NEW
                         .build())
                 .toList();
 
-        // Associates & Employees
+        // ── FIX: was findByProfileIdAndRole(profileId, AssociateRole.ASSOCIATE) ──
         List<AssociateResponse> knownAssociates = associateRepository
-                .findByProfileIdAndRole(profileId, AssociateRole.ASSOCIATE).stream()
+                .findByProfileIdAndRole(profileId, "ASSOCIATE").stream()
                 .map(this::mapAssociate).toList();
-
         List<AssociateResponse> knownEmployees = associateRepository
-                .findByProfileIdAndRole(profileId, AssociateRole.EMPLOYEE).stream()
+                .findByProfileIdAndRole(profileId, "EMPLOYEE").stream()
                 .map(this::mapAssociate).toList();
+        // ────────────────────────────────────────────────────────────────────
 
-        // Products Infringed
         List<ProductInfringedResponse> productsInfringed = productInfringedRepository
                 .findByProfileId(profileId).stream()
                 .map(p -> ProductInfringedResponse.builder()
@@ -1258,7 +1255,6 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .build())
                 .toList();
 
-        // Products Operations
         ProductsOperationsResponse opsResponse = productsOperationsRepository
                 .findByProfileId(profileId)
                 .map(o -> ProductsOperationsResponse.builder()
@@ -1268,11 +1264,12 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .build())
                 .orElse(null);
 
-        // Family Background
         List<SiblingResponse> siblings = siblingRepository.findByProfileId(profileId).stream()
                 .map(s -> SiblingResponse.builder()
                         .id(s.getId()).name(s.getName())
-                        .relationship(s.getRelationship()).occupation(s.getOccupation())
+                        .relationship(s.getRelationship())
+                        .relationshipOther(s.getRelationshipOther())              // ← NEW
+                        .occupation(s.getOccupation())
                         .build())
                 .toList();
 
@@ -1281,12 +1278,11 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .map(f -> FamilyBackgroundResponse.builder()
                         .fatherName(f.getFatherName()).fatherOccupation(f.getFatherOccupation())
                         .fatherContact(f.getFatherContact()).motherName(f.getMotherName())
-                        .motherOccupation(f.getMotherOccupation())
-                        .motherContact(f.getMotherContact()).siblings(siblings)
+                        .motherOccupation(f.getMotherOccupation()).motherContact(f.getMotherContact())
+                        .siblings(siblings)
                         .build())
                 .orElse(null);
 
-        // Influential Links
         List<InfluentialLinkResponse> links = influentialLinkRepository
                 .findByProfileId(profileId).stream()
                 .map(l -> InfluentialLinkResponse.builder()
@@ -1295,7 +1291,6 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .build())
                 .toList();
 
-        // Current Status
         CurrentStatusResponse statusResponse = currentStatusRepository
                 .findByProfileId(profileId)
                 .map(s -> CurrentStatusResponse.builder()
@@ -1304,18 +1299,18 @@ public class OpProfileServiceImpl implements OpProfileService {
                         .build())
                 .orElse(null);
 
-        // Additional Info
         AdditionalInfoResponse additionalResponse = additionalInfoRepository
                 .findByProfileId(profileId)
                 .map(a -> AdditionalInfoResponse.builder()
                         .notes(a.getNotes()).behavioralNotes(a.getBehavioralNotes())
-                        .riskLevel(a.getRiskLevel()).tags(a.getTags())
+                        .riskLevel(a.getRiskLevel())
+                        .riskLevelOther(a.getRiskLevelOther())                    // ← NEW
+                        .tags(a.getTags())
                         .additionalPhotos(a.getAdditionalPhotos())
                         .attachments(a.getAttachments()).linkedCases(a.getLinkedCases())
                         .build())
                 .orElse(null);
 
-        // Step Statuses
         List<StepStatusResponse> stepStatuses = stepStatusRepository
                 .findByProfileIdOrderByStepNumber(profileId).stream()
                 .map(s -> StepStatusResponse.builder()
@@ -1355,35 +1350,42 @@ public class OpProfileServiceImpl implements OpProfileService {
                 .build();
     }
 
+    // ── FIX: mapAssociate now includes roleOther ─────────────────────────────
     private AssociateResponse mapAssociate(OpProfileAssociate a) {
         return AssociateResponse.builder()
                 .id(a.getId()).name(a.getName())
-                .relationship(a.getRelationship()).role(a.getRole())
-                .contactInfo(a.getContactInfo()).notes(a.getNotes())
+                .relationship(a.getRelationship())
+                .role(a.getRole())
+                .roleOther(a.getRoleOther())                                      // ← NEW
+                .contactInfo(a.getContactInfo())
+                .notes(a.getNotes())
                 .build();
     }
 
     private PagedProfileResponse mapToPagedResponse(Page<OpProfile> page) {
         List<ProfileSummaryResponse> summaries = page.getContent().stream()
                 .map(p -> {
-                    long COMPLETED = stepStatusRepository
-                            .countByProfileIdAndStatus(p.getId(), StepStatus.COMPLETED);
+                    long completed = stepStatusRepository.countByProfileIdAndStatus(p.getId(), StepStatus.COMPLETED);
                     String photo = personalInfoRepository.findByProfileId(p.getId())
                             .map(OpProfilePersonalInfo::getProfilePhoto).orElse(null);
-                    RiskLevel risk = additionalInfoRepository.findByProfileId(p.getId())
+
+                    // ── FIX: was RiskLevel risk — now String ─────────────────
+                    String risk = additionalInfoRepository.findByProfileId(p.getId())
                             .map(OpProfileAdditionalInfo::getRiskLevel).orElse(null);
+                    // ────────────────────────────────────────────────────────
+
                     return ProfileSummaryResponse.builder()
                             .id(p.getId())
                             .profileNumber(p.getProfileNumber())
                             .name(p.getName())
                             .profilePhoto(photo)
                             .status(p.getStatus())
-                            .riskLevel(risk)
+                            .riskLevel(risk)                                      // ← now String
                             .createdBy(p.getCreatedBy())
                             .updatedBy(p.getUpdatedBy())
                             .createdAt(p.getCreatedAt())
                             .updatedAt(p.getUpdatedAt())
-                            .COMPLETEDSteps(COMPLETED)
+                            .completedSteps(completed)
                             .totalSteps(TOTAL_STEPS)
                             .build();
                 })

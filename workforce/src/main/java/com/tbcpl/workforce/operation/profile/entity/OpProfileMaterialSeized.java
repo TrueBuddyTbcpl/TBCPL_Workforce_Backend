@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.RaidingAuthority;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -38,12 +37,13 @@ public class OpProfileMaterialSeized {
     @Column(name = "location", length = 255)
     private String location;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "raiding_authority", length = 20)
-    private RaidingAuthority raidingAuthority;
+    // ── Was: @Enumerated RaidingAuthority (already had _other) ──────────────
+    @Column(name = "raiding_authority", length = 100)
+    private String raidingAuthority;
 
-    @Column(name = "raiding_authority_other", length = 100)
+    @Column(name = "raiding_authority_other", length = 255)
     private String raidingAuthorityOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     @Column(name = "date_seized")
     private LocalDate dateSeized;

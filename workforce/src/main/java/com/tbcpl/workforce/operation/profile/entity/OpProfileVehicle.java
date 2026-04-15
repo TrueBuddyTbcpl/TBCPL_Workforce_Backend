@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.VehicleOwnershipType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -34,9 +33,13 @@ public class OpProfileVehicle {
     @Column(name = "registration_number", length = 50)
     private String registrationNumber;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "ownership_type", length = 20)
-    private VehicleOwnershipType ownershipType;
+    // ── Was: @Enumerated VehicleOwnershipType ownershipType ──────────────────
+    @Column(name = "ownership_type", length = 100)
+    private String ownershipType;
+
+    @Column(name = "ownership_type_other", length = 255)
+    private String ownershipTypeOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     @Column(name = "updated_at")
     @UpdateTimestamp

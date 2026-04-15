@@ -1,10 +1,6 @@
 package com.tbcpl.workforce.operation.profile.dto.response;
 
-import com.tbcpl.workforce.operation.profile.enums.FirStatus;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,5 +15,9 @@ public class FirResponse {
     private String caseNumber;
     private List<String> sections;
     private LocalDate dateRegistered;
-    private FirStatus status;
+
+    // ── Was: FirStatus status ────────────────────────────────────────────────
+    private String status;
+    private String statusOther;
+    // ────────────────────────────────────────────────────────────────────────
 }

@@ -1,24 +1,30 @@
 package com.tbcpl.workforce.operation.profile.dto.response;
 
-import com.tbcpl.workforce.operation.profile.enums.AuthorizationStatus;
-import com.tbcpl.workforce.operation.profile.enums.BusinessEntityStatus;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class BusinessActivitiesResponse {
-    private BusinessEntityStatus retailerStatus;
-    private AuthorizationStatus retailerType;
+
+    // ── Was: BusinessEntityStatus / AuthorizationStatus enums ────────────────
+    private String retailerStatus;
+    private String retailerStatusOther;
+    private String retailerType;
+    private String retailerTypeOther;
     private String retailerDetails;
-    private BusinessEntityStatus supplierStatus;
-    private AuthorizationStatus supplierType;
+
+    private String supplierStatus;
+    private String supplierStatusOther;
+    private String supplierType;
+    private String supplierTypeOther;
     private String supplierDetails;
-    private BusinessEntityStatus manufacturerStatus;
-    private AuthorizationStatus manufacturerType;
+
+    private String manufacturerStatus;
+    private String manufacturerStatusOther;
+    private String manufacturerType;
+    private String manufacturerTypeOther;
     private String manufacturerDetails;
+    // ────────────────────────────────────────────────────────────────────────
 }

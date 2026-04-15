@@ -1,2 +1,2 @@
 package com.tbcpl.workforce.operation.profile.enums;
-public enum BusinessEntityStatus { INDIVIDUAL, ENTITY }
+public enum BusinessEntityStatus { INDIVIDUAL, ENTITY, OTHER }

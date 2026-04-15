@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.RelationshipNature;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -28,9 +27,13 @@ public class OpProfileAssociatedCompany {
     @Column(name = "company_name", length = 255)
     private String companyName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "relationship_nature", length = 30)
-    private RelationshipNature relationshipNature;
+    // ── Was: @Enumerated RelationshipNature relationshipNature ───────────────
+    @Column(name = "relationship_nature", length = 100)
+    private String relationshipNature;
+
+    @Column(name = "relationship_nature_other", length = 255)
+    private String relationshipNatureOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     @Column(name = "details", columnDefinition = "TEXT")
     private String details;

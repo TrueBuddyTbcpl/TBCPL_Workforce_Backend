@@ -1,15 +1,10 @@
 package com.tbcpl.workforce.operation.profile.dto.response;
 
 import com.tbcpl.workforce.operation.profile.enums.ProfileStatus;
-import com.tbcpl.workforce.operation.profile.enums.RiskLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-// Used in paginated list — lightweight response
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,12 +14,16 @@ public class ProfileSummaryResponse {
     private String profileNumber;
     private String name;
     private String profilePhoto;
-    private ProfileStatus status;
-    private RiskLevel riskLevel;
+    private ProfileStatus status;        // system-controlled — stays enum ✅
+
+    // ── Was: RiskLevel riskLevel ─────────────────────────────────────────────
+    private String riskLevel;            // now String
+    // ────────────────────────────────────────────────────────────────────────
+
     private String createdBy;
     private String updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private long COMPLETEDSteps;
+    private long completedSteps;
     private long totalSteps;
 }

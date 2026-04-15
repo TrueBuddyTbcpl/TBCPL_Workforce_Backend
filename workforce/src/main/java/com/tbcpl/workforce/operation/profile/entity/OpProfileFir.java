@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.FirStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -44,9 +43,13 @@ public class OpProfileFir {
     @Column(name = "date_registered")
     private LocalDate dateRegistered;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 30)
-    private FirStatus status;
+    // ── Was: @Enumerated FirStatus status ────────────────────────────────────
+    @Column(name = "status", length = 100)
+    private String status;
+
+    @Column(name = "status_other", length = 255)
+    private String statusOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     @Column(name = "updated_at")
     @UpdateTimestamp

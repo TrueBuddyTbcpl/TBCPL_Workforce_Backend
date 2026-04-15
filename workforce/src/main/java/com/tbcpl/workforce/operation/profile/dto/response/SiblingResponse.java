@@ -1,10 +1,6 @@
 package com.tbcpl.workforce.operation.profile.dto.response;
 
-import com.tbcpl.workforce.operation.profile.enums.SiblingRelationship;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @Builder
@@ -13,6 +9,11 @@ import lombok.NoArgsConstructor;
 public class SiblingResponse {
     private Long id;
     private String name;
-    private SiblingRelationship relationship;
+
+    // ── Was: SiblingRelationship relationship ────────────────────────────────
+    private String relationship;
+    private String relationshipOther;
+    // ────────────────────────────────────────────────────────────────────────
+
     private String occupation;
 }

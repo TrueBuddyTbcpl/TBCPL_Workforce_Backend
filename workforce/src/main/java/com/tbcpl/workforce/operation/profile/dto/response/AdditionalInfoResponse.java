@@ -1,10 +1,6 @@
 package com.tbcpl.workforce.operation.profile.dto.response;
 
-import com.tbcpl.workforce.operation.profile.enums.RiskLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
@@ -15,7 +11,12 @@ import java.util.List;
 public class AdditionalInfoResponse {
     private String notes;
     private String behavioralNotes;
-    private RiskLevel riskLevel;
+
+    // ── Was: RiskLevel riskLevel ─────────────────────────────────────────────
+    private String riskLevel;
+    private String riskLevelOther;
+    // ────────────────────────────────────────────────────────────────────────
+
     private List<String> tags;
     private List<String> additionalPhotos;
     private List<String> attachments;

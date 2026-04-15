@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.RiskLevel;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -35,9 +34,13 @@ public class OpProfileAdditionalInfo {
     @Column(name = "behavioral_notes", columnDefinition = "TEXT")
     private String behavioralNotes;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "risk_level", length = 20)
-    private RiskLevel riskLevel;
+    // ── Was: @Enumerated RiskLevel riskLevel ────────────────────────────────
+    @Column(name = "risk_level", length = 100)
+    private String riskLevel;
+
+    @Column(name = "risk_level_other", length = 255)
+    private String riskLevelOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tags", columnDefinition = "JSON")

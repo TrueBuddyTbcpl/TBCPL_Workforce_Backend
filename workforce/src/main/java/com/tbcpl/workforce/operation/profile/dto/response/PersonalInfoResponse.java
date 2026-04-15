@@ -1,10 +1,6 @@
 package com.tbcpl.workforce.operation.profile.dto.response;
 
-import com.tbcpl.workforce.operation.profile.enums.Gender;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 
@@ -16,7 +12,12 @@ public class PersonalInfoResponse {
     private String firstName;
     private String middleName;
     private String lastName;
-    private Gender gender;
+
+    // ── Was: Gender gender ───────────────────────────────────────────────────
+    private String gender;
+    private String genderOther;
+    // ────────────────────────────────────────────────────────────────────────
+
     private LocalDate dateOfBirth;
     private String bloodGroup;
     private String nationality;

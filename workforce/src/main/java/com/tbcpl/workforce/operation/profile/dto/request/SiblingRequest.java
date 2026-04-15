@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.dto.request;
 
-import com.tbcpl.workforce.operation.profile.enums.SiblingRelationship;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -10,6 +9,10 @@ public class SiblingRequest {
     @NotBlank(message = "Sibling name is required")
     private String name;
 
-    private SiblingRelationship relationship;
+    // ── Was: SiblingRelationship relationship ────────────────────────────────
+    private String relationship;
+    private String relationshipOther;
+    // ────────────────────────────────────────────────────────────────────────
+
     private String occupation;
 }

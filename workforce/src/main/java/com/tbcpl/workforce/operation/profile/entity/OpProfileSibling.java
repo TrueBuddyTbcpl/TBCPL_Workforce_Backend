@@ -1,6 +1,5 @@
 package com.tbcpl.workforce.operation.profile.entity;
 
-import com.tbcpl.workforce.operation.profile.enums.SiblingRelationship;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -28,9 +27,13 @@ public class OpProfileSibling {
     @Column(name = "name", length = 255)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "relationship", length = 20)
-    private SiblingRelationship relationship;
+    // ── Was: @Enumerated SiblingRelationship relationship ────────────────────
+    @Column(name = "relationship", length = 100)
+    private String relationship;
+
+    @Column(name = "relationship_other", length = 255)
+    private String relationshipOther;
+    // ────────────────────────────────────────────────────────────────────────
 
     @Column(name = "occupation", length = 255)
     private String occupation;
