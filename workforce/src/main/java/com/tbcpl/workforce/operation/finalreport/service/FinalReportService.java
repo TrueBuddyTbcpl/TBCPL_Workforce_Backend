@@ -34,5 +34,7 @@ public interface FinalReportService {
 
     FinalReportResponse updateStatus(Long reportId, FinalReportStatusUpdateRequest request, String updatedBy);
 
+    ImageUploadResponse uploadSectionImagesByReportId(Long reportId, MultipartFile[] files);
+
     void deleteReport(Long reportId);
 }

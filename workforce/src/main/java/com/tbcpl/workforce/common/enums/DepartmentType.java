@@ -1,13 +1,19 @@
+// com/tbcpl/workforce/common/enums/DepartmentType.java
 package com.tbcpl.workforce.common.enums;
 
+import java.util.List;
+
 /**
- * Enum for department types
+ * Enum for department types.
+ * PH_OPS added as a new department alongside existing ones.
  */
 public enum DepartmentType {
-    ADMIN("Admin"),
+
     HR("HR"),
+    ACCOUNTS("Accounts"),
+    ADMIN("Admin"),
     OPERATION("Operation"),
-    ACCOUNTS("Accounts");
+    PH_OPS("Ph Ops");
 
     private final String displayName;
 
@@ -17,6 +23,22 @@ public enum DepartmentType {
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    /**
+     * Returns the roles allowed for this department.
+     * Used to drive the role dropdown on the frontend (add/edit employee form).
+     */
+    public List<RoleType> getAllowedRoles() {
+        return switch (this) {
+            case HR        -> List.of(RoleType.EXECUTIVE, RoleType.ASSOCIATE);
+            case ACCOUNTS  -> List.of(RoleType.ASSOCIATE, RoleType.EXECUTIVE);
+            case OPERATION -> List.of(RoleType.COORDINATOR, RoleType.ASSOCIATE,
+                    RoleType.SR_ASSOCIATE, RoleType.ASSISTANT_MANAGER,
+                    RoleType.FIELD_ASSOCIATE);
+            case ADMIN     -> List.of(RoleType.GLOBAL_ADMIN, RoleType.ADMIN);
+            case PH_OPS    -> List.of(RoleType.PH_ASSOCIATE, RoleType.PH_HEAD);
+        };
     }
 
     /**
@@ -41,10 +63,10 @@ public enum DepartmentType {
     }
 
     /**
-     * Get enum from string (case-insensitive)
+     * Parse from string (case-insensitive). Supports both name and displayName.
      */
     public static DepartmentType fromString(String value) {
-        for (DepartmentType type : DepartmentType.values()) {
+        for (DepartmentType type : values()) {
             if (type.name().equalsIgnoreCase(value) || type.displayName.equalsIgnoreCase(value)) {
                 return type;
             }

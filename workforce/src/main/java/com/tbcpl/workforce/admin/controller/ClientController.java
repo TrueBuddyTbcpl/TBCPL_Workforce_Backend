@@ -85,4 +85,11 @@ public class ClientController {
         clientService.deleteClient(id);
         return ResponseEntity.ok(ApiResponse.success("Client deleted successfully"));
     }
+
+    @DeleteMapping("/{id}/logo")
+    public ResponseEntity<ApiResponse<ClientResponseDTO>> deleteClientLogo(@PathVariable Long id) {
+        log.info("DELETE /api/v1/admin/clients/{}/logo - Delete logo", id);
+        ClientResponseDTO response = clientService.deleteClientLogo(id);
+        return ResponseEntity.ok(ApiResponse.success("Logo deleted successfully", response));
+    }
 }

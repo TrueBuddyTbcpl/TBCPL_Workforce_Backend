@@ -9,6 +9,7 @@ import com.tbcpl.workforce.auth.repository.EmployeeRepository;
 import com.tbcpl.workforce.common.constants.ValidationMessages;
 import com.tbcpl.workforce.common.enums.RoleType;
 import com.tbcpl.workforce.common.exception.DuplicateResourceException;
+import com.tbcpl.workforce.common.exception.InvalidDepartmentRoleException;
 import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
 
 import com.tbcpl.workforce.common.util.S3Service;
@@ -85,6 +86,7 @@ public class EmployeeService {
 
         Department department = departmentService.getDepartmentEntityById(request.getDepartmentId());
         Role role = roleService.getRoleEntityById(request.getRoleId());
+        validateDepartmentRoleCombination(department, role);
 
         Employee reportingManager = null;
         if (request.getReportingManagerEmpId() != null
@@ -275,8 +277,16 @@ public class EmployeeService {
         }
 
         // ── Role ──────────────────────────────────────────────────────────────
+        // ── Role ──────────────────────────────────────────────────────────────
         if (request.getRoleId() != null) {
             Role role = roleService.getRoleEntityById(request.getRoleId());
+
+            // Validate against the current or newly-set department
+            Department effectiveDept = request.getDepartmentId() != null
+                    ? departmentService.getDepartmentEntityById(request.getDepartmentId())
+                    : employee.getDepartment();
+            validateDepartmentRoleCombination(effectiveDept, role); // ← ADD THIS
+
             employee.setRole(role);
         }
 
@@ -346,6 +356,42 @@ public class EmployeeService {
         return employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format(ValidationMessages.EMPLOYEE_NOT_FOUND, id)));
+    }
+
+    // ADD THIS — place in the HELPERS section, after findById()
+    /**
+     * Validates that the submitted role is permitted for the selected department.
+     * Prevents invalid department-role combinations from being persisted.
+     */
+    private void validateDepartmentRoleCombination(Department department, Role role) {
+        try {
+            com.tbcpl.workforce.common.enums.DepartmentType deptType =
+                    com.tbcpl.workforce.common.enums.DepartmentType.fromString(
+                            department.getDepartmentName());
+
+            com.tbcpl.workforce.common.enums.RoleType roleType =
+                    com.tbcpl.workforce.common.enums.RoleType.fromDbValue(
+                            role.getRoleName());
+
+            java.util.List<com.tbcpl.workforce.common.enums.RoleType> allowedRoles =
+                    deptType.getAllowedRoles();
+
+            if (!allowedRoles.contains(roleType)) {
+                throw new InvalidDepartmentRoleException(
+                        String.format("Role '%s' is not allowed for department '%s'. Allowed roles: %s",
+                                roleType.getDisplayName(),
+                                deptType.getDisplayName(),
+                                allowedRoles.stream()
+                                        .map(com.tbcpl.workforce.common.enums.RoleType::getDisplayName)
+                                        .collect(java.util.stream.Collectors.joining(", "))
+                        )
+                );
+            }
+        } catch (IllegalArgumentException ex) {
+            // If dept/role name doesn't match any enum value, skip validation silently
+            // (handles system-only roles like SUPER_ADMIN, MANAGER)
+            log.debug("Skipping dept-role validation — unrecognized enum value: {}", ex.getMessage());
+        }
     }
 
     /**

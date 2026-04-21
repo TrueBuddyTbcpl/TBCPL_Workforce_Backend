@@ -72,7 +72,17 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+
+
     // ========== NEW AUTH-SPECIFIC HANDLERS ==========
+
+    @ExceptionHandler(InvalidDepartmentRoleException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInvalidDepartmentRole(
+            InvalidDepartmentRoleException ex) {
+        log.warn("Invalid department-role combination: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
 
     /**
      * Handle duplicate session exception when employee tries to login from multiple devices

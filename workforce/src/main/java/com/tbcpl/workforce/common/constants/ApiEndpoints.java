@@ -17,6 +17,9 @@ public final class ApiEndpoints {
     public static final String HR_BASE        = API_V1 + "/hr";
     public static final String OPERATION_BASE = API_V1 + "/operation";
     public static final String ACCOUNTS_BASE  = API_V1 + "/accounts";
+    // ─── Employee Meta endpoints (dropdown support) ───────────────────────────
+    public static final String META_DEPARTMENTS = "/meta/departments";
+    public static final String META_ROLES       = "/meta/roles";
 
     // ─── Auth endpoints ───────────────────────────────────────────────────────
     public static final String AUTH_LOGIN           = "/login";

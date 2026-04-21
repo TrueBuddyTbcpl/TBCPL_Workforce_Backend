@@ -2,8 +2,11 @@ package com.tbcpl.workforce.auth.controller;
 
 import com.tbcpl.workforce.auth.dto.request.EmployeeRequest;
 import com.tbcpl.workforce.auth.dto.response.EmployeeResponse;
+import com.tbcpl.workforce.auth.repository.DepartmentRepository;
+import com.tbcpl.workforce.auth.repository.RoleRepository;
 import com.tbcpl.workforce.auth.service.EmployeeService;
 import com.tbcpl.workforce.common.constants.ApiEndpoints;
+import com.tbcpl.workforce.common.enums.DepartmentType;
 import com.tbcpl.workforce.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +21,10 @@ import org.springframework.web.multipart.MultipartFile;
 import com.tbcpl.workforce.auth.dto.request.EmployeeUpdateRequest;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Controller for Employee management
@@ -31,6 +37,8 @@ import java.util.List;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final DepartmentRepository departmentRepository;
+    private final RoleRepository roleRepository;
 
     /**
      * POST /api/v1/auth/employees
@@ -154,6 +162,63 @@ public class EmployeeController {
         log.info("Update employee ID: {} by: {}", id, updatedBy);
         EmployeeResponse response = employeeService.updateEmployee(id, request, updatedBy);
         return ResponseEntity.ok(ApiResponse.success("Employee updated successfully", response));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+// META — Dropdown endpoints for frontend
+// ─────────────────────────────────────────────────────────────────────────
+
+    @GetMapping("/meta/departments")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDepartments() {
+        log.debug("Fetching all department options");
+
+        List<Map<String, Object>> departments = Arrays.stream(DepartmentType.values())
+                .map(deptEnum -> departmentRepository.findByDepartmentNameIgnoreCase(deptEnum.name())
+                        .map(dbDept -> {
+                            Map<String, Object> map = new java.util.HashMap<>();
+                            map.put("id", dbDept.getId());               // DB Long — used as departmentId in submit
+                            map.put("value", deptEnum.name());           // "HR"
+                            map.put("label", deptEnum.getDisplayName()); // "HR"
+                            map.put("departmentName", deptEnum.name());  // frontend reads this field
+                            return map;
+                        })
+                        .orElse(null)
+                )
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.success("Departments fetched successfully", departments));
+    }
+
+    /**
+     * GET /api/v1/auth/meta/roles?department=HR
+     * Returns roles with DB id for the selected department
+     * Frontend uses the returned id as roleId in the create employee request
+     */
+    @GetMapping("/meta/roles")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getRolesByDepartment(
+            @RequestParam String department) {
+
+        log.debug("Fetching roles for department: {}", department);
+
+        DepartmentType deptType = DepartmentType.fromString(department);
+
+        List<Map<String, Object>> roles = deptType.getAllowedRoles().stream()
+                .map(roleEnum -> roleRepository.findByRoleNameIgnoreCase(roleEnum.getDbValue())
+                        .map(dbRole -> {
+                            Map<String, Object> map = new java.util.HashMap<>();
+                            map.put("id", dbRole.getId());               // DB Long — sent as roleId
+                            map.put("value", roleEnum.getDbValue());     // e.g. "EXECUTIVE"
+                            map.put("label", roleEnum.getDisplayName()); // e.g. "Executive"
+                            return map;
+                        })
+                        .orElse(null)
+                )
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "Roles fetched for: " + deptType.getDisplayName(), roles));
     }
 
 }

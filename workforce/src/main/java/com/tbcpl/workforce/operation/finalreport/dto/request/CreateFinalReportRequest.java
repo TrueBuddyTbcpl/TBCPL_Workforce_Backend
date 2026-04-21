@@ -11,7 +11,7 @@ import java.util.Map;
 @Data
 public class CreateFinalReportRequest {
 
-    @NotNull(message = "Case ID is required")
+    // ✅ NULLABLE — null in directCreate flow, populated in case-based flow
     private Long caseId;
 
     @NotBlank(message = "Report title is required")
@@ -35,4 +35,10 @@ public class CreateFinalReportRequest {
     private List<String> tableOfContents;
 
     private Map<String, Object> photographicEvidence;
+
+    // ✅ NEW — for directCreate flow: resolve client logo from client dropdown selection
+    private Long clientId;
+
+    // ✅ NEW — fallback logo URL if clientId is not provided
+    private String clientLogoUrl;
 }

@@ -29,6 +29,7 @@ public class ClientService {
     private final ClientRepository clientRepository;
     private final S3Service s3Service;
 
+
     public ClientResponseDTO createClient(ClientRequestDTO requestDTO) {
         log.info("Creating new client: {}", requestDTO.getClientName());
 
@@ -113,6 +114,25 @@ public class ClientService {
         }
 
         return client.getClientLogo();
+    }
+
+    @Transactional
+    public ClientResponseDTO deleteClientLogo(Long id) {
+        log.info("Deleting logo for client ID: {}", id);
+
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
+
+        // Clear all logo fields
+        client.setClientLogo(null);
+        client.setLogoFileName(null);
+        client.setLogoContentType(null);
+        client.setLogoUrl(null);
+
+        Client saved = clientRepository.save(client);
+        log.info("Logo deleted for client ID: {}", id);
+
+        return mapToResponseDTO(saved);
     }
 
     public ClientResponseDTO updateClient(Long id, ClientRequestDTO requestDTO) {

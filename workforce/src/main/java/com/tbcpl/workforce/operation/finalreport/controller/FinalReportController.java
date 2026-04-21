@@ -56,6 +56,17 @@ public class FinalReportController {
         ));
     }
 
+    @PostMapping(value = "/by-report/{reportId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ImageUploadResponse>> uploadImagesByReportId(
+            @PathVariable Long reportId,
+            @RequestParam("files") MultipartFile[] files) {
+        log.info("POST /by-report/{}/images - {} files", reportId, files.length);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                "Images processed",
+                finalReportService.uploadSectionImagesByReportId(reportId, files)
+        ));
+    }
+
     // ── Create ───────────────────────────────────────────────────────────
     @PostMapping
     public ResponseEntity<ApiResponse<FinalReportResponse>> createReport(

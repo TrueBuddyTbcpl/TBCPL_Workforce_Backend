@@ -6,6 +6,7 @@ import com.tbcpl.workforce.admin.entity.Client;
 import com.tbcpl.workforce.admin.repository.ClientRepository;
 import com.tbcpl.workforce.common.exception.BusinessException;
 
+import com.tbcpl.workforce.common.exception.ResourceNotFoundException;
 import com.tbcpl.workforce.common.util.S3Service;
 import com.tbcpl.workforce.operation.cases.entity.Case;
 import com.tbcpl.workforce.operation.cases.repository.CaseRepository;
@@ -166,26 +167,57 @@ public class FinalReportServiceImpl implements FinalReportService {
     public FinalReportResponse createReport(CreateFinalReportRequest request, String createdBy) {
         log.info("Creating final report for caseId: {} by: {}", request.getCaseId(), createdBy);
 
-        Case caseEntity = findActiveCase(request.getCaseId());
+        // ── Variables — only populated when caseId is provided ───────────
+        Case   caseEntity    = null;
+        String clientLogoUrl = null;
+        Long   resolvedCaseId     = null;
+        String resolvedCaseNumber = null;
+        Long   resolvedClientId   = null;
+        String resolvedClientName = null;
 
-        if (finalReportRepository.existsByCaseIdAndIsDeletedFalse(request.getCaseId())) {
-            throw new BusinessException(
-                    "A final report already exists for case: " + caseEntity.getCaseNumber());
+        if (request.getCaseId() != null) {
+            // ── Case-based flow ───────────────────────────────────────────
+            caseEntity = findActiveCase(request.getCaseId());
+
+            if (finalReportRepository.existsByCaseIdAndIsDeletedFalse(request.getCaseId())) {
+                throw new BusinessException(
+                        "A final report already exists for case: " + caseEntity.getCaseNumber());
+            }
+
+            clientLogoUrl = clientRepository
+                    .findActiveClientById(caseEntity.getClientId())
+                    .map(Client::getLogoUrl)
+                    .orElse(null);
+
+            resolvedCaseId     = caseEntity.getId();
+            resolvedCaseNumber = caseEntity.getCaseNumber();
+            resolvedClientId   = caseEntity.getClientId();
+            resolvedClientName = caseEntity.getClientName();
+
+        } else {
+            // ── Direct create flow (no case) ──────────────────────────────
+            // Resolve clientLogoUrl from the request if frontend sent clientId
+            if (request.getClientId() != null) {
+                clientLogoUrl = clientRepository
+                        .findActiveClientById(request.getClientId())
+                        .map(Client::getLogoUrl)
+                        .orElse(request.getClientLogoUrl());
+                resolvedClientId   = request.getClientId();
+                resolvedClientName = request.getPreparedFor();
+            } else {
+                clientLogoUrl      = request.getClientLogoUrl();
+                resolvedClientName = request.getPreparedFor();
+            }
         }
-
-        String clientLogoUrl = clientRepository
-                .findActiveClientById(caseEntity.getClientId())
-                .map(Client::getLogoUrl)
-                .orElse(null);
 
         String reportNumber = generateReportNumber();
 
         FinalReport report = FinalReport.builder()
                 .reportNumber(reportNumber)
-                .caseId(caseEntity.getId())
-                .caseNumber(caseEntity.getCaseNumber())
-                .clientId(caseEntity.getClientId())
-                .clientName(caseEntity.getClientName())
+                .caseId(resolvedCaseId)           // ✅ null-safe
+                .caseNumber(resolvedCaseNumber)   // ✅ null-safe
+                .clientId(resolvedClientId)       // ✅ null-safe
+                .clientName(resolvedClientName)   // ✅ null-safe
                 .clientLogoUrl(clientLogoUrl)
                 .reportTitle(request.getReportTitle())
                 .reportSubtitle(request.getReportSubtitle())
@@ -202,7 +234,7 @@ public class FinalReportServiceImpl implements FinalReportService {
                 .build();
 
         FinalReport saved = finalReportRepository.save(report);
-        log.info("Final report created: {} for case: {}", reportNumber, caseEntity.getCaseNumber());
+        log.info("Final report created: {} (caseId: {})", reportNumber, resolvedCaseId);
 
         return mapToResponse(saved);
     }
@@ -358,6 +390,65 @@ public class FinalReportServiceImpl implements FinalReportService {
         report.setIsDeleted(true);
         report.setUpdatedAt(LocalDateTime.now());
         finalReportRepository.save(report);
+    }
+
+    @Override
+    public ImageUploadResponse uploadSectionImagesByReportId(Long reportId, MultipartFile[] files) {
+        log.info("Uploading {} images for reportId: {}", files.length, reportId);
+
+        FinalReport report = finalReportRepository.findById(reportId)
+                .filter(r -> !r.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Report not found: " + reportId));
+
+        // ✅ Use reportNumber as folder key (no caseNumber available in direct create)
+        String folderKey = report.getCaseNumber() != null
+                ? report.getCaseNumber()
+                : report.getReportNumber();
+
+        List<ImageUploadResponse.UploadedImage> results = new ArrayList<>();
+        int successCount = 0;
+        int failedCount  = 0;
+
+        for (int i = 0; i < files.length; i++) {
+            MultipartFile file         = files[i];
+            String        originalName = file.getOriginalFilename();
+
+            try {
+                String contentType = file.getContentType();
+                if (contentType == null || !contentType.startsWith("image/")) {
+                    results.add(buildFailedImage(i, originalName, "Only image files are allowed"));
+                    failedCount++;
+                    continue;
+                }
+
+                Map<String, String> uploaded = s3Service.uploadFile(
+                        file,
+                        "finalreports/" + folderKey + "/sections"
+                );
+
+                results.add(ImageUploadResponse.UploadedImage.builder()
+                        .index(i)
+                        .originalName(originalName)
+                        .url(uploaded.get("url"))
+                        .publicId(uploaded.get("key"))
+                        .success(true)
+                        .build());
+
+                successCount++;
+                log.info("Image '{}' uploaded for report {}", originalName, reportId);
+
+            } catch (IOException e) {
+                log.error("Failed to upload image '{}': {}", originalName, e.getMessage());
+                results.add(buildFailedImage(i, originalName, "Upload failed: " + e.getMessage()));
+                failedCount++;
+            }
+        }
+
+        return ImageUploadResponse.builder()
+                .images(results)
+                .successCount(successCount)
+                .failedCount(failedCount)
+                .build();
     }
 
     // ─────────────────────────────────────────────────────────────────

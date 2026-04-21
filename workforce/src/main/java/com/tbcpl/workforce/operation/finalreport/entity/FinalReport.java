@@ -33,17 +33,16 @@ public class FinalReport {
     private String reportNumber;
 
     // ── Case linkage ───────────────────────────────────────────────────
-    @Column(name = "case_id", unique = true, nullable = false)
+    @Column(name = "case_id", unique = true, nullable = true)
     private Long caseId;
 
-    @Column(name = "case_number", nullable = false, length = 50)
+    @Column(name = "case_number", nullable = true, length = 50)    // ✅ null in directCreate
     private String caseNumber;
 
-    // ── Client info (denormalized for report independence) ─────────────
-    @Column(name = "client_id", nullable = false)
+    @Column(name = "client_id", nullable = true)                   // ✅ null when no client selected
     private Long clientId;
 
-    @Column(name = "client_name", nullable = false, length = 255)
+    @Column(name = "client_name", nullable = true, length = 255)   // ✅ null in directCreate (no case)
     private String clientName;
 
     @Column(name = "client_logo_url", length = 1000)
