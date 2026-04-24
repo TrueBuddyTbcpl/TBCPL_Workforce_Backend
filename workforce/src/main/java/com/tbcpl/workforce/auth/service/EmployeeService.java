@@ -106,7 +106,7 @@ public class EmployeeService {
                 .email(generatedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName().trim())
-                .lastName(request.getLastName().trim())
+                .lastName(request.getLastName() != null ? request.getLastName().trim() : null)
                 .middleName(request.getMiddleName() != null
                         ? request.getMiddleName().trim() : null)
                 .department(department)
@@ -253,8 +253,9 @@ public class EmployeeService {
         if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
             employee.setFirstName(request.getFirstName().trim());
         }
-        if (request.getLastName() != null && !request.getLastName().isBlank()) {
-            employee.setLastName(request.getLastName().trim());
+        if (request.getLastName() != null) {
+            String trimmed = request.getLastName().trim();
+            employee.setLastName(trimmed.isEmpty() ? null : trimmed);
         }
         if (request.getMiddleName() != null) {
             employee.setMiddleName(request.getMiddleName().trim());

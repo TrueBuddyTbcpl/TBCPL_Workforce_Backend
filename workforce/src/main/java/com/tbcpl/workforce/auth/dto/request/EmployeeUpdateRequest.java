@@ -24,8 +24,9 @@ public class EmployeeUpdateRequest {
     @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters")
     private String firstName;
 
-    @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
-    private String lastName;
+    // EmployeeUpdateRequest.java — lastName field
+    @Size(max = 50, message = "Last name must not exceed 50 characters")
+    private String lastName;   // no @NotBlank, no min size
 
     @Size(max = 50, message = "Middle name must not exceed 50 characters")
     private String middleName;

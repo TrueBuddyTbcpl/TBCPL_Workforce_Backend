@@ -105,9 +105,12 @@ public class Employee {
     public String getFullName() {
         StringBuilder fullName = new StringBuilder(firstName);
         if (middleName != null && !middleName.trim().isEmpty()) {
-            fullName.append(" ").append(middleName);
+            fullName.append(" ").append(middleName.trim());
         }
-        return fullName.append(" ").append(lastName).toString();
+        if (lastName != null && !lastName.trim().isEmpty()) {
+            fullName.append(" ").append(lastName.trim());
+        }
+        return fullName.toString().trim();
     }
 
     public boolean isPasswordExpired() {
