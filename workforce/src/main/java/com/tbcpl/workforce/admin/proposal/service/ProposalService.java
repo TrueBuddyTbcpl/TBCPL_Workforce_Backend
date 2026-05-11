@@ -1,36 +1,31 @@
 package com.tbcpl.workforce.admin.proposal.service;
 
-import com.tbcpl.workforce.admin.proposal.dto.request.*;
-import com.tbcpl.workforce.admin.proposal.dto.response.*;
+import com.tbcpl.workforce.admin.proposal.dto.request.CreateProposalRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ProposalSectionRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ProposalStatusRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ReorderSectionsRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.UpdateProposalRequest;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalListItemResponse;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalResponse;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalSectionResponse;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.util.List;
 
 public interface ProposalService {
 
-    ProposalSummaryResponse   createProposal(CreateProposalRequest request);
-    ProposalSummaryResponse   updateProposal(Long proposalId, UpdateProposalRequest request);
-    ProposalDetailResponse    getProposalById(Long proposalId);
-    Page<ProposalSummaryResponse> getAllProposals(Pageable pageable);
-    void                      deleteProposal(Long proposalId);
+    // ── Proposal CRUD ─────────────────────────────────────────────────────────
+    ProposalResponse               create(CreateProposalRequest request, String createdBy);
+    ProposalResponse               getById(Long id);
+    Page<ProposalListItemResponse> getAll(int page, int size);
+    Page<ProposalListItemResponse> getByClientId(Long clientId, int page, int size);
+    Page<ProposalListItemResponse> getByStatus(String status, int page, int size);
+    ProposalResponse               update(Long id, UpdateProposalRequest request, String updatedBy);
+    ProposalResponse               updateStatus(Long id, ProposalStatusRequest request, String updatedBy);
+    void                           delete(Long id, String deletedBy);
 
-    // Step saves
-    ProposalBackgroundResponse     saveBackground(Long proposalId, ProposalBackgroundRequest request);
-    ProposalScopeResponse          saveScope(Long proposalId, ProposalScopeRequest request);
-    ProposalMethodologyResponse    saveMethodology(Long proposalId, ProposalMethodologyRequest request);
-    ProposalFeeResponse            saveFee(Long proposalId, ProposalFeeRequest request);
-    ProposalPaymentTermsResponse   savePaymentTerms(Long proposalId, ProposalPaymentTermsRequest request);
-    ProposalConfidentialityResponse saveConfidentiality(Long proposalId, ProposalConfidentialityRequest request);
-    ProposalObligationsResponse    saveObligations(Long proposalId, ProposalObligationsRequest request);
-    ProposalConclusionResponse     saveConclusion(Long proposalId, ProposalConclusionRequest request);
-
-    // Step tracking
-    List<ProposalStepStatusResponse> getStepStatuses(Long proposalId);
-
-    // Admin-only
-    ProposalSummaryResponse updateStatus(Long proposalId, ProposalStatusUpdateRequest request);
-    ProposalSummaryResponse uploadSignatureStamp(Long proposalId, MultipartFile file) throws IOException;
+    // ── Section Management ────────────────────────────────────────────────────
+    ProposalSectionResponse addSection(Long proposalId, ProposalSectionRequest request, String createdBy);
+    ProposalSectionResponse updateSection(Long proposalId, Long sectionId, ProposalSectionRequest request);
+    void                    deleteSection(Long proposalId, Long sectionId);
+    ProposalResponse        reorderSections(Long proposalId, ReorderSectionsRequest request);
+    ProposalSectionResponse toggleVisibility(Long proposalId, Long sectionId);
 }

@@ -1,302 +1,167 @@
 package com.tbcpl.workforce.admin.proposal.controller;
 
-import com.tbcpl.workforce.admin.proposal.dto.request.*;
-import com.tbcpl.workforce.admin.proposal.dto.response.*;
+import com.tbcpl.workforce.admin.proposal.dto.request.CreateProposalRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ProposalSectionRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ProposalStatusRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ReorderSectionsRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.UpdateProposalRequest;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalListItemResponse;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalResponse;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalSectionResponse;
 import com.tbcpl.workforce.admin.proposal.service.ProposalService;
-import com.tbcpl.workforce.common.constants.ApiEndpoints;
 import com.tbcpl.workforce.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.util.List;
 
 @RestController
-@RequestMapping(ApiEndpoints.ADMIN_BASE)
+@RequestMapping("/api/v1/admin/proposals")
 @RequiredArgsConstructor
 @Slf4j
 public class ProposalController {
 
     private final ProposalService proposalService;
 
-    // ── CRUD ─────────────────────────────────────────────────────────────────
+    // ── Proposal CRUD ─────────────────────────────────────────────────────────
 
-    /**
-     * Create a new proposal (Step 1 / Main).
-     * Status defaults to DRAFT on creation.
-     * All 9 step statuses are initialized to NOT_COMPLETED.
-     */
-    @PostMapping(ApiEndpoints.PROPOSALS)
-    public ResponseEntity<ApiResponse<ProposalSummaryResponse>> createProposal(
-            @Valid @RequestBody CreateProposalRequest request) {
-
-        log.info("POST {} - Create proposal for clientId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSALS, request.getClientId());
-
-        ProposalSummaryResponse response = proposalService.createProposal(request);
+    @PostMapping
+    public ResponseEntity<ApiResponse<ProposalResponse>> create(
+            @Valid @RequestBody CreateProposalRequest request,
+            @RequestHeader("X-Username") String username
+    ) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Proposal created successfully", response));
+                .body(ApiResponse.success(
+                        "Proposal created",
+                        proposalService.create(request, username)));
     }
 
-    /**
-     * Paginated list of all active proposals.
-     * Default: page=0, size=10, sorted by createdAt DESC.
-     */
-    @GetMapping(ApiEndpoints.PROPOSALS)
-    public ResponseEntity<ApiResponse<Page<ProposalSummaryResponse>>> getAllProposals(
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<ProposalListItemResponse>>> getAll(
+            @RequestParam(defaultValue = "0")  int    page,
+            @RequestParam(defaultValue = "10") int    size,
+            @RequestParam(required = false)    String status,
+            @RequestParam(required = false)    Long   clientId
+    ) {
+        // ── TEMPORARY DEBUG — REMOVE AFTER FIX ───────────────────────────
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        log.info("=== AUTH DEBUG: principal={}, authorities={}, authenticated={}",
+                auth != null ? auth.getName()           : "NULL",
+                auth != null ? auth.getAuthorities()    : "NULL",
+                auth != null ? auth.isAuthenticated()   : "FALSE");
+        // ─────────────────────────────────────────────────────────────────
 
-        log.info("GET {} - List proposals page={} size={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSALS, page, size);
+        Page<ProposalListItemResponse> data;
 
-        Sort sort = sortDir.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
+        if (status != null) {
+            data = proposalService.getByStatus(status, page, size);
+        } else if (clientId != null) {
+            data = proposalService.getByClientId(clientId, page, size);
+        } else {
+            data = proposalService.getAll(page, size);
+        }
 
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<ProposalSummaryResponse> response = proposalService.getAllProposals(pageable);
-        return ResponseEntity.ok(ApiResponse.success("Proposals retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success("Proposals fetched", data));
     }
 
-    /**
-     * Full proposal detail — includes all filled step data and step statuses.
-     */
-    @GetMapping(ApiEndpoints.PROPOSAL_BY_ID)
-    public ResponseEntity<ApiResponse<ProposalDetailResponse>> getProposalById(
-            @PathVariable Long id) {
-
-        log.info("GET {} - Get proposal id={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_BY_ID, id);
-
-        ProposalDetailResponse response = proposalService.getProposalById(id);
-        return ResponseEntity.ok(ApiResponse.success("Proposal retrieved successfully", response));
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ProposalResponse>> getById(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Proposal fetched",
+                proposalService.getById(id)));
     }
 
-    /**
-     * Update Step 1 (main proposal fields).
-     * Re-evaluates MAIN step status after update.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_BY_ID)
-    public ResponseEntity<ApiResponse<ProposalSummaryResponse>> updateProposal(
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<ProposalResponse>> update(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateProposalRequest request) {
-
-        log.info("PUT {} - Update proposal id={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_BY_ID, id);
-
-        ProposalSummaryResponse response = proposalService.updateProposal(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Proposal updated successfully", response));
+            @Valid @RequestBody UpdateProposalRequest request,
+            @RequestHeader("X-Username") String username
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Proposal updated",
+                proposalService.update(id, request, username)));
     }
 
-    /**
-     * Soft delete a proposal.
-     */
-    @DeleteMapping(ApiEndpoints.PROPOSAL_BY_ID)
-    public ResponseEntity<ApiResponse<Void>> deleteProposal(@PathVariable Long id) {
-
-        log.info("DELETE {} - Soft delete proposal id={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_BY_ID, id);
-
-        proposalService.deleteProposal(id);
-        return ResponseEntity.ok(ApiResponse.success("Proposal deleted successfully"));
-    }
-
-    // ── Step-wise Saves ───────────────────────────────────────────────────────
-
-    /**
-     * Step 2 — Save/update Background section.
-     * Step status → COMPLETED if mode + text present, else NOT_COMPLETED.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_BACKGROUND)
-    public ResponseEntity<ApiResponse<ProposalBackgroundResponse>> saveBackground(
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<ProposalResponse>> updateStatus(
             @PathVariable Long id,
-            @Valid @RequestBody ProposalBackgroundRequest request) {
-
-        log.info("PUT {} - Save background for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_BACKGROUND, id);
-
-        ProposalBackgroundResponse response = proposalService.saveBackground(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Background saved successfully", response));
+            @Valid @RequestBody ProposalStatusRequest request,
+            @RequestHeader("X-Username") String username
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Status updated",
+                proposalService.updateStatus(id, request, username)));
     }
 
-    /**
-     * Step 3 — Save/update Scope of Work.
-     * Step status → COMPLETED if at least one scope item is selected, else NOT_COMPLETED.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_SCOPE)
-    public ResponseEntity<ApiResponse<ProposalScopeResponse>> saveScope(
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Long id,
-            @RequestBody ProposalScopeRequest request) {
-
-        log.info("PUT {} - Save scope for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_SCOPE, id);
-
-        ProposalScopeResponse response = proposalService.saveScope(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Scope of work saved successfully", response));
+            @RequestHeader("X-Username") String username
+    ) {
+        proposalService.delete(id, username);
+        return ResponseEntity.ok(ApiResponse.success("Proposal deleted", null));
     }
 
-    /**
-     * Step 4 — Save/update Approach & Methodology.
-     * Step status → COMPLETED if at least one methodology section has points, else NOT_COMPLETED.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_METHODOLOGY)
-    public ResponseEntity<ApiResponse<ProposalMethodologyResponse>> saveMethodology(
+    // ── Section Management ────────────────────────────────────────────────────
+
+    @PostMapping("/{id}/sections")
+    public ResponseEntity<ApiResponse<ProposalSectionResponse>> addSection(
             @PathVariable Long id,
-            @RequestBody ProposalMethodologyRequest request) {
-
-        log.info("PUT {} - Save methodology for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_METHODOLOGY, id);
-
-        ProposalMethodologyResponse response = proposalService.saveMethodology(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Approach & Methodology saved successfully", response));
+            @Valid @RequestBody ProposalSectionRequest request,
+            @RequestHeader("X-Username") String username
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        "Section added",
+                        proposalService.addSection(id, request, username)));
     }
 
-    /**
-     * Step 5 — Save/update Professional Fee.
-     * Step status → COMPLETED if dueDiligenceFeeAmount is present, else NOT_COMPLETED.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_FEE)
-    public ResponseEntity<ApiResponse<ProposalFeeResponse>> saveFee(
+    @PutMapping("/{id}/sections/{sectionId}")
+    public ResponseEntity<ApiResponse<ProposalSectionResponse>> updateSection(
             @PathVariable Long id,
-            @RequestBody ProposalFeeRequest request) {
-
-        log.info("PUT {} - Save fee for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_FEE, id);
-
-        ProposalFeeResponse response = proposalService.saveFee(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Professional fee saved successfully", response));
+            @PathVariable Long sectionId,
+            @Valid @RequestBody ProposalSectionRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Section updated",
+                proposalService.updateSection(id, sectionId, request)));
     }
 
-    /**
-     * Step 6 — Save/update Payment Terms.
-     * Step status → COMPLETED if paymentTermsText is non-blank, else NOT_COMPLETED.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_PAYMENT_TERMS)
-    public ResponseEntity<ApiResponse<ProposalPaymentTermsResponse>> savePaymentTerms(
+    @DeleteMapping("/{id}/sections/{sectionId}")
+    public ResponseEntity<ApiResponse<Void>> deleteSection(
             @PathVariable Long id,
-            @RequestBody ProposalPaymentTermsRequest request) {
-
-        log.info("PUT {} - Save payment terms for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_PAYMENT_TERMS, id);
-
-        ProposalPaymentTermsResponse response = proposalService.savePaymentTerms(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Payment terms saved successfully", response));
+            @PathVariable Long sectionId
+    ) {
+        proposalService.deleteSection(id, sectionId);
+        return ResponseEntity.ok(ApiResponse.success("Section deleted", null));
     }
 
-    /**
-     * Step 7 — Save/update Confidentiality.
-     * Step status → COMPLETED if mode + text present, else NOT_COMPLETED.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_CONFIDENTIALITY)
-    public ResponseEntity<ApiResponse<ProposalConfidentialityResponse>> saveConfidentiality(
+    @PatchMapping("/{id}/sections/reorder")
+    public ResponseEntity<ApiResponse<ProposalResponse>> reorderSections(
             @PathVariable Long id,
-            @Valid @RequestBody ProposalConfidentialityRequest request) {
-
-        log.info("PUT {} - Save confidentiality for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_CONFIDENTIALITY, id);
-
-        ProposalConfidentialityResponse response = proposalService.saveConfidentiality(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Confidentiality saved successfully", response));
+            @Valid @RequestBody ReorderSectionsRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Sections reordered",
+                proposalService.reorderSections(id, request)));
     }
 
-    /**
-     * Step 8 — Save/update Special Obligations.
-     * Step status → COMPLETED if at least one obligation point present, else NOT_COMPLETED.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_OBLIGATIONS)
-    public ResponseEntity<ApiResponse<ProposalObligationsResponse>> saveObligations(
+    @PatchMapping("/{id}/sections/{sectionId}/visibility")
+    public ResponseEntity<ApiResponse<ProposalSectionResponse>> toggleVisibility(
             @PathVariable Long id,
-            @RequestBody ProposalObligationsRequest request) {
-
-        log.info("PUT {} - Save obligations for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_OBLIGATIONS, id);
-
-        ProposalObligationsResponse response = proposalService.saveObligations(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Special obligations saved successfully", response));
-    }
-
-    /**
-     * Step 9 — Save/update Conclusion.
-     * Step status → COMPLETED if mode + text present, else NOT_COMPLETED.
-     */
-    @PutMapping(ApiEndpoints.PROPOSAL_CONCLUSION)
-    public ResponseEntity<ApiResponse<ProposalConclusionResponse>> saveConclusion(
-            @PathVariable Long id,
-            @Valid @RequestBody ProposalConclusionRequest request) {
-
-        log.info("PUT {} - Save conclusion for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_CONCLUSION, id);
-
-        ProposalConclusionResponse response = proposalService.saveConclusion(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Conclusion saved successfully", response));
-    }
-
-    // ── Step Tracking ─────────────────────────────────────────────────────────
-
-    /**
-     * Get all 9 step statuses for a proposal (used by frontend breadcrumb).
-     */
-    @GetMapping(ApiEndpoints.PROPOSAL_STEPS)
-    public ResponseEntity<ApiResponse<List<ProposalStepStatusResponse>>> getStepStatuses(
-            @PathVariable Long id) {
-
-        log.info("GET {} - Get step statuses for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_STEPS, id);
-
-        List<ProposalStepStatusResponse> response = proposalService.getStepStatuses(id);
-        return ResponseEntity.ok(ApiResponse.success("Step statuses retrieved successfully", response));
-    }
-
-    // ── Admin-Only Operations ─────────────────────────────────────────────────
-
-    /**
-     * Admin-only: Change proposal status.
-     * DRAFT → IN_PROGRESS → WAITING_FOR_APPROVAL → APPROVED / DECLINED / REQUEST_FOR_CHANGES.
-     * remarks required when status = REQUEST_FOR_CHANGES.
-     */
-    @PatchMapping(ApiEndpoints.PROPOSAL_STATUS)
-    public ResponseEntity<ApiResponse<ProposalSummaryResponse>> updateStatus(
-            @PathVariable Long id,
-            @Valid @RequestBody ProposalStatusUpdateRequest request) {
-
-        log.info("PATCH {} - Update status for proposalId={} to {}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_STATUS, id, request.getStatus());
-
-        ProposalSummaryResponse response = proposalService.updateStatus(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Proposal status updated successfully", response));
-    }
-
-    /**
-     * Admin-only: Upload CEO signature/stamp image.
-     * Stored in S3 under proposals/signatures/.
-     * Path saved in proposal.signatureStampPath.
-     */
-    @PostMapping(
-            value    = ApiEndpoints.PROPOSAL_SIGNATURE,
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    public ResponseEntity<ApiResponse<ProposalSummaryResponse>> uploadSignatureStamp(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file) throws IOException {
-
-        log.info("POST {} - Upload signature stamp for proposalId={}",
-                ApiEndpoints.ADMIN_BASE + ApiEndpoints.PROPOSAL_SIGNATURE, id);
-
-        ProposalSummaryResponse response = proposalService.uploadSignatureStamp(id, file);
-        return ResponseEntity.ok(ApiResponse.success("Signature stamp uploaded successfully", response));
+            @PathVariable Long sectionId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Section visibility toggled",
+                proposalService.toggleVisibility(id, sectionId)));
     }
 }

@@ -76,4 +76,9 @@ public final class ApiEndpoints {
     public static final String PROPOSAL_PDF                 = "/proposals/{id}/pdf";
     public static final String PROPOSAL_SEND_EMAIL          = "/proposals/{id}/send-email";
 
+    // Proposal — Step 2 (Section Builder)
+    public static final String PROPOSAL_SECTIONS          = "/proposals/{id}/sections";
+    public static final String PROPOSAL_SECTION_BY_ID     = "/proposals/{id}/sections/{sectionId}";
+    public static final String PROPOSAL_SECTIONS_REORDER  = "/proposals/{id}/sections/reorder";
+
 }

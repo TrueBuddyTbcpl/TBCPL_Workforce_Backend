@@ -1,75 +1,77 @@
 package com.tbcpl.workforce.admin.proposal.entity;
 
-import com.tbcpl.workforce.admin.proposal.entity.enums.ProposalServiceType;
 import com.tbcpl.workforce.admin.proposal.entity.enums.ProposalStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
-        name = "proposal",
+        name = "proposals",
         indexes = {
-                @Index(name = "idx_proposal_client_id",  columnList = "client_id"),
-                @Index(name = "idx_proposal_code",        columnList = "proposal_code"),
-                @Index(name = "idx_proposal_status",      columnList = "status"),
-                @Index(name = "idx_proposal_deleted",     columnList = "is_deleted")
+                @Index(name = "idx_proposal_code",      columnList = "proposal_code"),
+                @Index(name = "idx_proposal_client_id", columnList = "client_id"),
+                @Index(name = "idx_proposal_status",    columnList = "status"),
+                @Index(name = "idx_proposal_deleted",   columnList = "deleted")
         }
 )
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Proposal {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "proposal_id")
-    private Long proposalId;
+    private Long id;
 
-    @Column(name = "proposal_code", unique = true, nullable = false, length = 20)
+    @Column(name = "proposal_code", nullable = false, unique = true, length = 30)
     private String proposalCode;
 
     @Column(name = "client_id", nullable = false)
     private Long clientId;
 
-    @Column(name = "client_company_type", length = 100)
-    private String clientCompanyType;
-
-    @Column(name = "suspect_entity_name", length = 255)
-    private String suspectEntityName;
-
-    @Column(name = "suspect_entity_type", length = 100)
-    private String suspectEntityType;
-
-    @Column(name = "project_title", length = 255)
-    private String projectTitle;
-
-    @Column(name = "proposal_date")
-    private LocalDate proposalDate;
-
-    @Column(name = "target_products", length = 500)
-    private String targetProducts;
-
     @Enumerated(EnumType.STRING)
-    @Column(name = "service_type", length = 100)
-    private ProposalServiceType serviceType;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "status", nullable = false, length = 40)
     private ProposalStatus status;
 
-    @Column(name = "prepared_by", length = 255)
-    private String preparedBy;
+    /**
+     * Ordered list of dynamic sections.
+     * cascade = ALL → saving proposal saves/updates sections.
+     * orphanRemoval = true → removing from list deletes the row.
+     * Ordered by display_order to avoid extra sorting in memory.
+     */
+    @Builder.Default
+    @OneToMany(
+            mappedBy      = "proposal",
+            cascade       = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch         = FetchType.LAZY
+    )
+    @OrderBy("displayOrder ASC")
+    private List<ProposalSection> sections = new ArrayList<>();
 
-    @Column(name = "signature_stamp_path", length = 500)
-    private String signatureStampPath;
+    @Column(name = "remarks", columnDefinition = "TEXT")
+    private String remarks;
 
-    @Column(name = "is_deleted", nullable = false)
-    private Boolean deleted = false;
+    @Column(name = "created_by", nullable = false, length = 60)
+    private String createdBy;
+
+    @Column(name = "updated_by", length = 60)
+    private String updatedBy;
+
+    @Builder.Default
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted = false;
+
+    @Column(name = "deleted_by", length = 60)
+    private String deletedBy;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -78,10 +80,4 @@ public class Proposal {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    @Column(name = "created_by", length = 100)
-    private String createdBy;
-
-    @Column(name = "updated_by", length = 100)
-    private String updatedBy;
 }

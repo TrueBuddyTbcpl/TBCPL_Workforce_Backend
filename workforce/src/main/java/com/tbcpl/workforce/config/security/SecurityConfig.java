@@ -36,226 +36,194 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    /**
-     * Configure security filter chain
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Enable CORS with custom configuration
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // Disable CSRF (using JWT, stateless)
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // Configure authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ CRITICAL: Allow all OPTIONS requests for CORS preflight
+
+                        // ── CORS preflight ────────────────────────────────────────────────────
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // ============================================
-                        // PUBLIC ENDPOINTS (No Authentication) - TESTING
-                        // ============================================
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_LOGIN).permitAll()
-                        .requestMatchers(HttpMethod.GET,  ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_VERIFY_EMAIL).permitAll()
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + "/resend-verification").permitAll()
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + "/resend-verification/**").permitAll()
-
-                        // TEMPORARY: Allow operation module without authentication for frontend testing
-                        .requestMatchers("/api/v1/operation/**").permitAll()
-
-                        // ============================================
-                        // AUTH MODULE ENDPOINTS
-                        // ============================================
-
-                        // Department endpoints (ADMIN only for POST/PUT/DELETE, HR can GET)
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.DEPARTMENTS).hasAuthority("DEPARTMENT_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, ApiEndpoints.AUTH_BASE + "/departments/**").hasAuthority("DEPARTMENT_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, ApiEndpoints.AUTH_BASE + "/departments/**").hasAuthority("DEPARTMENT_ADMIN")
-                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + ApiEndpoints.DEPARTMENTS).hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + "/departments/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-
-                        // Role endpoints (ADMIN only for POST/PUT/DELETE, HR can GET)
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.ROLES).hasAuthority("DEPARTMENT_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, ApiEndpoints.AUTH_BASE + "/roles/**").hasAuthority("DEPARTMENT_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, ApiEndpoints.AUTH_BASE + "/roles/**").hasAuthority("DEPARTMENT_ADMIN")
-                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + ApiEndpoints.ROLES).hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + "/roles/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-
-                        // ✅ SPECIFIC RULE FIRST: Get employee by ID (any authenticated user)
-                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + "/employees/*").authenticated()
-
-                        // ✅ SPECIFIC RULE: Get employee by empId (any authenticated user)
-                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + "/employees/empId/**").authenticated()
-
-                        // ✅ GENERAL RULE AFTER: Employee management endpoints (HR and ADMIN can manage)
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES).hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-                        .requestMatchers(HttpMethod.PUT, ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES + "/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-                        .requestMatchers(HttpMethod.DELETE, ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES + "/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-
-                        // Login attempt endpoints (HR and ADMIN can view)
-                        .requestMatchers(ApiEndpoints.AUTH_BASE + ApiEndpoints.LOGIN_ATTEMPTS + "/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-
-                        // Password reset (HR and ADMIN only)
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_RESET_PASSWORD).hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
-
-                        // Change password (any authenticated user)
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_CHANGE_PASSWORD).authenticated()
-
-                        // Get profile (any authenticated user)
-                        .requestMatchers(HttpMethod.GET, ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_PROFILE).authenticated()
-
-                        // Logout (any authenticated user)
-                        .requestMatchers(HttpMethod.POST, ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_LOGOUT).authenticated()
-
+                        // ── Public auth endpoints ─────────────────────────────────────────────
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_LOGIN).permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_VERIFY_EMAIL).permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + "/resend-verification").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + "/resend-verification/**").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 ApiEndpoints.AUTH_BASE + ApiEndpoints.PASSWORD_RESET_CONFIRM).permitAll()
+
+                        // ── TEMPORARY: Operation module open for frontend testing ──────────────
+                        .requestMatchers("/api/v1/operation/**").permitAll()
+
+                        // ── Department endpoints ──────────────────────────────────────────────
                         .requestMatchers(HttpMethod.POST,
-                                ApiEndpoints.AUTH_BASE + ApiEndpoints.PASSWORD_CHANGE).authenticated()
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.DEPARTMENTS)
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                ApiEndpoints.AUTH_BASE + "/departments/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE,
+                                ApiEndpoints.AUTH_BASE + "/departments/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.DEPARTMENTS)
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        .requestMatchers(HttpMethod.GET,
+                                ApiEndpoints.AUTH_BASE + "/departments/**")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+
+                        // ── Role endpoints ────────────────────────────────────────────────────
                         .requestMatchers(HttpMethod.POST,
-                                ApiEndpoints.AUTH_BASE + ApiEndpoints.PASSWORD_RESET_REQUEST).authenticated()
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.ROLES)
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                ApiEndpoints.AUTH_BASE + "/roles/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE,
+                                ApiEndpoints.AUTH_BASE + "/roles/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.ROLES)
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        .requestMatchers(HttpMethod.GET,
+                                ApiEndpoints.AUTH_BASE + "/roles/**")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+
+                        // ── Employee endpoints ────────────────────────────────────────────────
+                        .requestMatchers(HttpMethod.GET,
+                                ApiEndpoints.AUTH_BASE + "/employees/*").authenticated()
+                        .requestMatchers(HttpMethod.GET,
+                                ApiEndpoints.AUTH_BASE + "/employees/empId/**").authenticated()
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES)
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        .requestMatchers(HttpMethod.PUT,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES + "/**")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        .requestMatchers(HttpMethod.DELETE,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.EMPLOYEES + "/**")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+
+                        // ── Login attempt endpoints ───────────────────────────────────────────
+                        .requestMatchers(
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.LOGIN_ATTEMPTS + "/**")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+
+                        // ── Password endpoints ────────────────────────────────────────────────
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_RESET_PASSWORD)
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_CHANGE_PASSWORD)
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.PASSWORD_CHANGE)
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.PASSWORD_RESET_REQUEST)
+                        .authenticated()
                         .requestMatchers(HttpMethod.POST,
                                 ApiEndpoints.AUTH_BASE + ApiEndpoints.PASSWORD_ADMIN_RESET)
-                        .hasAnyAuthority("DEPARTMENT_ADMIN")
+                        .hasAuthority("DEPARTMENT_ADMIN")
 
-                        // ============================================
-                        // OTHER DEPARTMENT MODULE ENDPOINTS
-                        // ============================================
+                        // ── Profile & Logout ──────────────────────────────────────────────────
+                        .requestMatchers(HttpMethod.GET,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_PROFILE).authenticated()
+                        .requestMatchers(HttpMethod.POST,
+                                ApiEndpoints.AUTH_BASE + ApiEndpoints.AUTH_LOGOUT).authenticated()
 
-                        // HR module - HR and ADMIN can access
-                        .requestMatchers("/api/v1/hr/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
+                        // ── HR module ─────────────────────────────────────────────────────────
+                        .requestMatchers("/api/v1/hr/**")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_HR")
 
-                        // Accounts module - ACCOUNTS and ADMIN can access
-                        .requestMatchers("/api/v1/accounts/**").hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_ACCOUNTS")
+                        // ── Accounts module ───────────────────────────────────────────────────
+                        .requestMatchers("/api/v1/accounts/**")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_ACCOUNTS")
 
-                        // Admin module - ADMIN only
-                                .requestMatchers("/api/v1/admin/**").hasAnyAuthority("DEPARTMENT_ADMIN", "ADMIN")
+                        // ── Admin module (proposals, clients, etc.) ───────────────────────────
+                        // FIX: Removed incorrect "ADMIN" authority — only "DEPARTMENT_ADMIN" exists
+                        .requestMatchers("/api/v1/admin/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
 
+                        // ── LOA Assets ────────────────────────────────────────────────────────
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/grnd-operation/loa/assets").authenticated()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/grnd-operation/loa/assets/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/v1/grnd-operation/loa/assets/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
 
-                                // ── LOA Assets ─────────────────────────────────────────────────────────────
-                                .requestMatchers(HttpMethod.GET,
-                                        "/api/v1/grnd-operation/loa/assets")
-                                .authenticated()
+                        // ── GRND-OPERATION LOA endpoints ──────────────────────────────────────
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/grnd-operation/loa/*/preview").authenticated()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/grnd-operation/loa/*/send-mail")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_OPERATION")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/grnd-operation/loa/dropdown/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/grnd-operation/loa")
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/v1/grnd-operation/loa/**")
+                        .hasAuthority("DEPARTMENT_ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/grnd-operation/loa/**")
+                        .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_OPERATION")
 
-                                .requestMatchers(HttpMethod.POST,
-                                        "/api/v1/grnd-operation/loa/assets/**")
-                                .hasAuthority("DEPARTMENT_ADMIN")
-
-                                .requestMatchers(HttpMethod.DELETE,
-                                        "/api/v1/grnd-operation/loa/assets/**")
-                                .hasAuthority("DEPARTMENT_ADMIN")
-
-
-                                // ============================================================
-// GRND-OPERATION MODULE — LOA ENDPOINTS
-// ============================================================
-
-// PDF Preview — all authenticated users
-                                .requestMatchers(HttpMethod.GET,
-                                        "/api/v1/grnd-operation/loa/*/preview").authenticated()
-
-// Send Mail — Admin OR Operation dept (fine-grained role check inside service)
-                                .requestMatchers(HttpMethod.POST,
-                                        "/api/v1/grnd-operation/loa/*/send-mail")
-                                .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_OPERATION")
-
-// Dropdowns — Admin dept (role check inside service)
-                                .requestMatchers(HttpMethod.GET,
-                                        "/api/v1/grnd-operation/loa/dropdown/**")
-                                .hasAuthority("DEPARTMENT_ADMIN")
-
-// Create LOA — Admin dept (role check inside service)
-                                .requestMatchers(HttpMethod.POST,
-                                        "/api/v1/grnd-operation/loa")
-                                .hasAuthority("DEPARTMENT_ADMIN")
-
-// Update / Finalize — Admin dept (role check inside service)
-                                .requestMatchers(HttpMethod.PUT,
-                                        "/api/v1/grnd-operation/loa/**")
-                                .hasAuthority("DEPARTMENT_ADMIN")
-
-// List / Get single — Admin + Operation can view
-                                .requestMatchers(HttpMethod.GET,
-                                        "/api/v1/grnd-operation/loa/**")
-                                .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_OPERATION")
-
-
-                                // ============================================
-                        // DEFAULT: All other requests must be authenticated
-                        // ============================================
+                        // ── Default: all other requests must be authenticated ─────────────────
                         .anyRequest().authenticated()
                 )
-
-                // Stateless session management (JWT-based)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
-                // Add JWT filter before UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * CORS Configuration
-     * Allows frontend applications to access backend APIs
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // Allow frontend origins (development and production)
         configuration.setAllowedOrigins(Arrays.asList(
-                "https://tbcontrolcenter.com",          // ✅ ADD THIS
+                "https://tbcontrolcenter.com",
                 "https://www.tbcontrolcenter.com",
                 "https://tbcpl-workforce.onrender.com",
-                "http://localhost",           // ← ADD: frontend on port 80
+                "http://localhost",
                 "http://localhost:3000",
                 "http://192.168.1.45:3000",
-                "http://172.31.144.1:3000/"
+                "http://172.31.144.1:3000"
         ));
-
-        // Allow all HTTP methods
         configuration.setAllowedMethods(Arrays.asList(
-                "GET",
-                "POST",
-                "PUT",
-                "DELETE",
-                "PATCH",
-                "OPTIONS"
+                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));
-
-        // Allow all headers
         configuration.setAllowedHeaders(Arrays.asList("*"));
-
-        // Allow credentials (cookies, authorization headers, etc.)
         configuration.setAllowCredentials(true);
-
-        // Expose headers to frontend JavaScript
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
                 "Content-Disposition",
                 "Content-Length"
         ));
-
-        // Cache preflight response for 1 hour (3600 seconds)
         configuration.setMaxAge(3600L);
 
-        // Register CORS configuration for all endpoints
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-
         return source;
     }
 
-    /**
-     * Authentication manager bean
-     * Required for authentication process
-     */
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+            throws Exception {
         return config.getAuthenticationManager();
     }
 

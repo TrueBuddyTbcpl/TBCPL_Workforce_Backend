@@ -1,27 +1,25 @@
 package com.tbcpl.workforce.admin.proposal.dto.request;
 
-import com.tbcpl.workforce.admin.proposal.entity.enums.ProposalServiceType;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.*;
 
-import java.time.LocalDate;
+import java.util.List;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class CreateProposalRequest {
 
-    @NotNull(message = "Client ID is required")
+    @NotNull(message = "clientId is required")
     private Long clientId;
 
-    private String clientCompanyType;
-    private String suspectEntityName;
-    private String suspectEntityType;
-    private String projectTitle;
-
-    @NotNull(message = "Proposal date is required")
-    private LocalDate proposalDate;
-
-    private String targetProducts;
-
-    @NotNull(message = "Service type is required")
-    private ProposalServiceType serviceType;
+    /**
+     * Optional initial sections at creation time.
+     * If not provided, proposal is created with zero sections (pure DRAFT).
+     */
+    @Valid
+    private List<ProposalSectionRequest> sections;
 }
