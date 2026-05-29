@@ -61,6 +61,9 @@ public class SecurityConfig {
                         // ── TEMPORARY: Operation module open for frontend testing ──────────────
                         .requestMatchers("/api/v1/operation/**").permitAll()
 
+                        // ── Common endpoints (accessible by all authenticated users) ───────────
+                        .requestMatchers("/api/v1/common/**").authenticated()
+
                         // ── Department endpoints ──────────────────────────────────────────────
                         .requestMatchers(HttpMethod.POST,
                                 ApiEndpoints.AUTH_BASE + ApiEndpoints.DEPARTMENTS)
@@ -147,7 +150,6 @@ public class SecurityConfig {
                         .hasAnyAuthority("DEPARTMENT_ADMIN", "DEPARTMENT_ACCOUNTS")
 
                         // ── Admin module (proposals, clients, etc.) ───────────────────────────
-                        // FIX: Removed incorrect "ADMIN" authority — only "DEPARTMENT_ADMIN" exists
                         .requestMatchers("/api/v1/admin/**")
                         .hasAuthority("DEPARTMENT_ADMIN")
 
@@ -198,10 +200,7 @@ public class SecurityConfig {
                 "https://tbcontrolcenter.com",
                 "https://www.tbcontrolcenter.com",
                 "https://tbcpl-workforce.onrender.com",
-                "http://localhost",
-                "http://localhost:3000",
-                "http://192.168.1.45:3000",
-                "http://172.31.144.1:3000"
+                "http://localhost:3000"
         ));
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"

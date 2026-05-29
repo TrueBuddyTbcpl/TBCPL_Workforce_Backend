@@ -1,0 +1,16 @@
+package com.tbcpl.workforce.hr.document.entity.enums;
+
+public enum LetterType {
+    OFFER_LETTER,
+    APPOINTMENT_LETTER,
+    INCREMENT_LETTER,
+    EXPERIENCE_LETTER,
+    RELIEVING_LETTER,
+    NOC_LETTER,
+    WARNING_LETTER,
+    SHOW_CAUSE_NOTICE,
+    SALARY_REVISION_LETTER,
+    TRANSFER_LETTER,
+    PROMOTION_LETTER,
+    OTHER
+}

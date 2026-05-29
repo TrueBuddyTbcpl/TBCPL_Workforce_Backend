@@ -1,0 +1,43 @@
+package com.tbcpl.workforce.hr.document.entity.enums;
+
+public enum DocumentType {
+    // Identity
+    AADHAAR_CARD,
+    PAN_CARD,
+    PASSPORT,
+    VOTER_ID,
+    DRIVING_LICENSE,
+
+    // Academic
+    TENTH_MARKSHEET,
+    TWELFTH_MARKSHEET,
+    GRADUATION_CERTIFICATE,
+    POST_GRADUATION_CERTIFICATE,
+    OTHER_ACADEMIC,
+
+    // Employment
+    PREVIOUS_OFFER_LETTER,
+    PREVIOUS_EXPERIENCE_LETTER,
+    PREVIOUS_RELIEVING_LETTER,
+    PREVIOUS_PAYSLIP,
+
+    // Bank & Finance
+    BANK_PASSBOOK,
+    CANCELLED_CHEQUE,
+
+    // Joining & HR Issued
+    OFFER_LETTER,
+    APPOINTMENT_LETTER,
+    INCREMENT_LETTER,
+    EXPERIENCE_LETTER,
+    RELIEVING_LETTER,
+    SALARY_SLIP,
+    NOC_LETTER,
+    WARNING_LETTER,
+    SHOW_CAUSE_NOTICE,
+
+    // Photo
+    PASSPORT_PHOTO,
+
+    OTHER
+}

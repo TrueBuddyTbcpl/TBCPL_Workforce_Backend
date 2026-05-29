@@ -1,5 +1,11 @@
 package com.tbcpl.workforce.admin.proposal.entity.enums;
 
+import jakarta.persistence.Column;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
 public enum SectionContentType {
 
     /**
@@ -24,11 +30,6 @@ public enum SectionContentType {
      * Key-value table rows.
      * content = JSON array of objects → [{ key, value }]
      */
-    TABLE,
-
-    /**
-     * Fully custom / freeform JSON.
-     * content = any valid JSON the frontend defines
-     */
-    CUSTOM
+    TABLE
 }
+

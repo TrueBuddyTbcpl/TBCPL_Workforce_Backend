@@ -79,6 +79,24 @@ public class FinalReportController {
         ));
     }
 
+    // ── Direct image upload (before report creation) ─────────────────────
+    @PostMapping(value = "/images/direct", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ImageUploadResponse>> uploadImagesDirectly(
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(value = "folderKey", required = false) String folderKey) {
+        log.info("POST /images/direct - {} files, folderKey: {}", files.length, folderKey);
+
+        // Use timestamp-based folder if no key provided
+        String folder = (folderKey != null && !folderKey.isBlank())
+                ? folderKey
+                : "temp-" + System.currentTimeMillis();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                "Images processed",
+                finalReportService.uploadImagesDirectly(files, folder)
+        ));
+    }
+
     // ── Get by ID ────────────────────────────────────────────────────────
     @GetMapping("/{reportId}")
     public ResponseEntity<ApiResponse<FinalReportResponse>> getReportById(

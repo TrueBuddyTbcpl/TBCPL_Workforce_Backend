@@ -100,6 +100,21 @@ public class Ttr {
     @Builder.Default
     private List<TtrCompletionRecord> completionRecords = new ArrayList<>();
 
+    @Column(name = "proof_attachment_url", length = 512)
+    private String proofAttachmentUrl;
+
+    @Column(name = "proof_attachment_key", length = 512)
+    private String proofAttachmentKey;
+
+    @Column(name = "proof_attachment_name", length = 255)
+    private String proofAttachmentName;
+
+    @Column(name = "proof_attachment_content_type", length = 150)
+    private String proofAttachmentContentType;
+
+    @Column(name = "proof_attachment_size")
+    private Long proofAttachmentSize;
+
     // ── Audit ─────────────────────────────────────────────────────────────────
     @Column(name = "created_by", nullable = false, length = 20)
     private String createdBy;           // empId of creator

@@ -1,6 +1,7 @@
 package com.tbcpl.workforce.admin.proposal.entity;
 
 import com.tbcpl.workforce.admin.proposal.entity.enums.ProposalStatus;
+import com.tbcpl.workforce.admin.proposal.entity.enums.ServiceType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -14,10 +15,11 @@ import java.util.List;
 @Table(
         name = "proposals",
         indexes = {
-                @Index(name = "idx_proposal_code",      columnList = "proposal_code"),
-                @Index(name = "idx_proposal_client_id", columnList = "client_id"),
-                @Index(name = "idx_proposal_status",    columnList = "status"),
-                @Index(name = "idx_proposal_deleted",   columnList = "deleted")
+                @Index(name = "idx_proposal_code",         columnList = "proposal_code"),
+                @Index(name = "idx_proposal_client_id",    columnList = "client_id"),
+                @Index(name = "idx_proposal_status",       columnList = "status"),
+                @Index(name = "idx_proposal_service_type", columnList = "service_type"),
+                @Index(name = "idx_proposal_deleted",      columnList = "deleted")
         }
 )
 @Getter
@@ -37,6 +39,19 @@ public class Proposal {
     @Column(name = "client_id", nullable = false)
     private Long clientId;
 
+    /**
+     * Type of service being proposed — optional at creation.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "service_type", length = 40)
+    private ServiceType serviceType;
+
+    /**
+     * Product name(s) relevant to this proposal — optional, max 200 chars.
+     */
+    @Column(name = "product_name", length = 200)
+    private String productName;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 40)
     private ProposalStatus status;
@@ -45,7 +60,6 @@ public class Proposal {
      * Ordered list of dynamic sections.
      * cascade = ALL → saving proposal saves/updates sections.
      * orphanRemoval = true → removing from list deletes the row.
-     * Ordered by display_order to avoid extra sorting in memory.
      */
     @Builder.Default
     @OneToMany(

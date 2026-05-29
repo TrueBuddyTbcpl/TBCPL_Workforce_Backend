@@ -1,6 +1,7 @@
 package com.tbcpl.workforce.auth.controller;
 
 import com.tbcpl.workforce.auth.dto.request.EmployeeRequest;
+import com.tbcpl.workforce.auth.dto.request.EmployeeUpdateRequest;
 import com.tbcpl.workforce.auth.dto.response.EmployeeResponse;
 import com.tbcpl.workforce.auth.repository.DepartmentRepository;
 import com.tbcpl.workforce.auth.repository.RoleRepository;
@@ -18,7 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import com.tbcpl.workforce.auth.dto.request.EmployeeUpdateRequest;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -26,10 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Controller for Employee management
- * HR and ADMIN can manage employees
- */
 @RestController
 @RequestMapping(ApiEndpoints.AUTH_BASE)
 @RequiredArgsConstructor
@@ -40,10 +36,6 @@ public class EmployeeController {
     private final DepartmentRepository departmentRepository;
     private final RoleRepository roleRepository;
 
-    /**
-     * POST /api/v1/auth/employees
-     * Create new employee — ADMIN / SUPER_ADMIN only
-     */
     @PostMapping(ApiEndpoints.EMPLOYEES)
     public ResponseEntity<ApiResponse<EmployeeResponse>> createEmployee(
             @Valid @RequestBody EmployeeRequest request,
@@ -52,63 +44,43 @@ public class EmployeeController {
         String createdBy = authentication.getName();
         log.info("Create employee request by: {}", createdBy);
 
-        // ✅ Only 2 args — EmailVerificationService injected inside EmployeeService
         EmployeeResponse response = employeeService.createEmployee(request, createdBy);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Employee created successfully", response));
     }
 
-    // EmployeeController.java — update getAllEmployees:
     @GetMapping(ApiEndpoints.EMPLOYEES)
     public ResponseEntity<ApiResponse<Page<EmployeeResponse>>> getAllEmployees(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String departmentId,
             @RequestParam(required = false) String roleId,
-            @RequestParam(required = false) String name    // ← ADD THIS
+            @RequestParam(required = false) String name
     ) {
         log.info("Get all employees - page:{} size:{} name:{}", page, size, name);
-        Page<EmployeeResponse> employees = employeeService.getAllEmployees(
-                page, size, departmentId, roleId, name);   // ← PASS IT
+        Page<EmployeeResponse> employees =
+                employeeService.getAllEmployees(page, size, departmentId, roleId, name);
+
         return ResponseEntity.ok(ApiResponse.success("Employees retrieved successfully", employees));
     }
 
-
-    /**
-     * GET /api/v1/auth/employees/{id}
-     * Get employee by DB ID
-     */
     @GetMapping(ApiEndpoints.EMPLOYEE_BY_ID)
-    public ResponseEntity<ApiResponse<EmployeeResponse>> getEmployeeById(
-            @PathVariable Long id
-    ) {
+    public ResponseEntity<ApiResponse<EmployeeResponse>> getEmployeeById(@PathVariable Long id) {
         log.info("Get employee by ID: {}", id);
         return ResponseEntity.ok(
-                ApiResponse.success("Employee retrieved successfully",
-                        employeeService.getEmployeeById(id))
+                ApiResponse.success("Employee retrieved successfully", employeeService.getEmployeeById(id))
         );
     }
 
-    /**
-     * GET /api/v1/auth/employees/emp/{empId}
-     * Get employee by empId (e.g., 2026/001)
-     */
     @GetMapping(ApiEndpoints.EMPLOYEE_BY_EMP_ID)
-    public ResponseEntity<ApiResponse<EmployeeResponse>> getEmployeeByEmpId(
-            @PathVariable String empId
-    ) {
+    public ResponseEntity<ApiResponse<EmployeeResponse>> getEmployeeByEmpId(@PathVariable String empId) {
         log.info("Get employee by empId: {}", empId);
         return ResponseEntity.ok(
-                ApiResponse.success("Employee retrieved successfully",
-                        employeeService.getEmployeeByEmpId(empId))
+                ApiResponse.success("Employee retrieved successfully", employeeService.getEmployeeByEmpId(empId))
         );
     }
 
-    /**
-     * DELETE /api/v1/auth/employees/{id}
-     * Soft delete — ADMIN / SUPER_ADMIN only
-     */
     @DeleteMapping(ApiEndpoints.EMPLOYEE_BY_ID)
     public ResponseEntity<ApiResponse<String>> deleteEmployee(
             @PathVariable Long id,
@@ -120,11 +92,6 @@ public class EmployeeController {
         return ResponseEntity.ok(ApiResponse.success("Employee deactivated successfully", null));
     }
 
-    /**
-     * GET /api/v1/auth/employees/reporting-managers
-     * Returns employees eligible as reporting managers
-     * (SUPER_ADMIN, ADMIN, MANAGER, HR_MANAGER roles)
-     */
     @GetMapping(ApiEndpoints.EMPLOYEE_REPORTING_MGRS)
     public ResponseEntity<ApiResponse<List<EmployeeResponse>>> getReportingManagers() {
         log.info("Get reporting manager candidates");
@@ -134,10 +101,6 @@ public class EmployeeController {
         );
     }
 
-    /**
-     * POST /api/v1/auth/employees/{id}/profile-photo
-     * Upload or update profile photo via Cloudinary
-     */
     @PostMapping(
             value = ApiEndpoints.EMPLOYEE_PROFILE_PHOTO,
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
@@ -149,7 +112,8 @@ public class EmployeeController {
         log.info("Upload profile photo for employee ID: {}", id);
         EmployeeResponse response = employeeService.uploadProfilePhoto(id, file);
         return ResponseEntity.ok(
-                ApiResponse.success("Profile photo uploaded successfully", response));
+                ApiResponse.success("Profile photo uploaded successfully", response)
+        );
     }
 
     @PutMapping(ApiEndpoints.EMPLOYEE_BY_ID)
@@ -164,61 +128,48 @@ public class EmployeeController {
         return ResponseEntity.ok(ApiResponse.success("Employee updated successfully", response));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-// META — Dropdown endpoints for frontend
-// ─────────────────────────────────────────────────────────────────────────
-
-    @GetMapping("/meta/departments")
+    @GetMapping(ApiEndpoints.META_DEPARTMENTS)
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDepartments() {
         log.debug("Fetching all department options");
 
         List<Map<String, Object>> departments = Arrays.stream(DepartmentType.values())
                 .map(deptEnum -> departmentRepository.findByDepartmentNameIgnoreCase(deptEnum.name())
-                        .map(dbDept -> {
-                            Map<String, Object> map = new java.util.HashMap<>();
-                            map.put("id", dbDept.getId());               // DB Long — used as departmentId in submit
-                            map.put("value", deptEnum.name());           // "HR"
-                            map.put("label", deptEnum.getDisplayName()); // "HR"
-                            map.put("departmentName", deptEnum.name());  // frontend reads this field
-                            return map;
-                        })
-                        .orElse(null)
-                )
+                        .map(dbDept -> Map.<String, Object>of(
+                                "id", dbDept.getId(),
+                                "value", deptEnum.name(),
+                                "label", deptEnum.getDisplayName(),
+                                "departmentName", deptEnum.name()
+                        ))
+                        .orElse(null))
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(ApiResponse.success("Departments fetched successfully", departments));
+        return ResponseEntity.ok(
+                ApiResponse.success("Departments fetched successfully", departments)
+        );
     }
 
-    /**
-     * GET /api/v1/auth/meta/roles?department=HR
-     * Returns roles with DB id for the selected department
-     * Frontend uses the returned id as roleId in the create employee request
-     */
-    @GetMapping("/meta/roles")
+    @GetMapping(ApiEndpoints.META_ROLES)
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getRolesByDepartment(
-            @RequestParam String department) {
-
+            @RequestParam String department
+    ) {
         log.debug("Fetching roles for department: {}", department);
 
         DepartmentType deptType = DepartmentType.fromString(department);
 
         List<Map<String, Object>> roles = deptType.getAllowedRoles().stream()
                 .map(roleEnum -> roleRepository.findByRoleNameIgnoreCase(roleEnum.getDbValue())
-                        .map(dbRole -> {
-                            Map<String, Object> map = new java.util.HashMap<>();
-                            map.put("id", dbRole.getId());               // DB Long — sent as roleId
-                            map.put("value", roleEnum.getDbValue());     // e.g. "EXECUTIVE"
-                            map.put("label", roleEnum.getDisplayName()); // e.g. "Executive"
-                            return map;
-                        })
-                        .orElse(null)
-                )
+                        .map(dbRole -> Map.<String, Object>of(
+                                "id", dbRole.getId(),
+                                "value", roleEnum.getDbValue(),
+                                "label", roleEnum.getDisplayName()
+                        ))
+                        .orElse(null))
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(ApiResponse.success(
-                "Roles fetched for: " + deptType.getDisplayName(), roles));
+        return ResponseEntity.ok(
+                ApiResponse.success("Roles fetched for: " + deptType.getDisplayName(), roles)
+        );
     }
-
 }

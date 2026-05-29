@@ -4,6 +4,7 @@ import com.tbcpl.workforce.admin.proposal.entity.enums.SectionContentType;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -12,14 +13,15 @@ import java.time.LocalDateTime;
 @Builder
 public class ProposalSectionResponse {
 
-    private Long               id;
-    private String             sectionKey;
-    private String             sectionTitle;
+    private Long id;
+    private String sectionKey;
+    private String sectionTitle;
     private SectionContentType contentType;
-    private String             content;
-    private Integer            displayOrder;
-    private boolean            visible;
-    private String             createdBy;
-    private LocalDateTime      createdAt;
-    private LocalDateTime      updatedAt;
+    private String content;
+    private Integer displayOrder;
+    private boolean visible;
+    private List<ProposalSubSectionResponse> subSections;
+    private String createdBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

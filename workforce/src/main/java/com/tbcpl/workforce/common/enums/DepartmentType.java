@@ -31,7 +31,7 @@ public enum DepartmentType {
      */
     public List<RoleType> getAllowedRoles() {
         return switch (this) {
-            case HR        -> List.of(RoleType.EXECUTIVE, RoleType.ASSOCIATE);
+            case HR        -> List.of(RoleType.EXECUTIVE, RoleType.ASSOCIATE, RoleType.MANAGER);
             case ACCOUNTS  -> List.of(RoleType.ASSOCIATE, RoleType.EXECUTIVE);
             case OPERATION -> List.of(RoleType.COORDINATOR, RoleType.ASSOCIATE,
                     RoleType.SR_ASSOCIATE, RoleType.ASSISTANT_MANAGER,

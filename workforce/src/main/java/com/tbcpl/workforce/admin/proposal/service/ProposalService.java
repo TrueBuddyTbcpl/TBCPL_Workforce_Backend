@@ -3,11 +3,14 @@ package com.tbcpl.workforce.admin.proposal.service;
 import com.tbcpl.workforce.admin.proposal.dto.request.CreateProposalRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ProposalSectionRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ProposalStatusRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ProposalSubSectionRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ReorderSectionsRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ReorderSubSectionsRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.UpdateProposalRequest;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalListItemResponse;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalResponse;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalSectionResponse;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalSubSectionResponse;
 import org.springframework.data.domain.Page;
 
 public interface ProposalService {
@@ -27,5 +30,12 @@ public interface ProposalService {
     ProposalSectionResponse updateSection(Long proposalId, Long sectionId, ProposalSectionRequest request);
     void                    deleteSection(Long proposalId, Long sectionId);
     ProposalResponse        reorderSections(Long proposalId, ReorderSectionsRequest request);
-    ProposalSectionResponse toggleVisibility(Long proposalId, Long sectionId);
+    ProposalSectionResponse toggleSectionVisibility(Long proposalId, Long sectionId);
+
+    // ── SubSection Management ─────────────────────────────────────────────────
+    ProposalSubSectionResponse addSubSection(Long proposalId, Long sectionId, ProposalSubSectionRequest request, String createdBy);
+    ProposalSubSectionResponse updateSubSection(Long proposalId, Long sectionId, Long subSectionId, ProposalSubSectionRequest request);
+    void                       deleteSubSection(Long proposalId, Long sectionId, Long subSectionId);
+    ProposalSectionResponse    reorderSubSections(Long proposalId, Long sectionId, ReorderSubSectionsRequest request);
+    ProposalSubSectionResponse toggleSubSectionVisibility(Long proposalId, Long sectionId, Long subSectionId);
 }

@@ -451,6 +451,58 @@ public class FinalReportServiceImpl implements FinalReportService {
                 .build();
     }
 
+    @Override
+    public ImageUploadResponse uploadImagesDirectly(MultipartFile[] files, String folderKey) {
+        log.info("Uploading {} images directly to folder: {}", files.length, folderKey);
+
+        List<ImageUploadResponse.UploadedImage> results = new ArrayList<>();
+        int successCount = 0;
+        int failedCount  = 0;
+
+        for (int i = 0; i < files.length; i++) {
+            MultipartFile file         = files[i];
+            String        originalName = file.getOriginalFilename();
+
+            try {
+                // Validate content type
+                String contentType = file.getContentType();
+                if (contentType == null || !contentType.startsWith("image/")) {
+                    results.add(buildFailedImage(i, originalName, "Only image files are allowed"));
+                    failedCount++;
+                    continue;
+                }
+
+                // Upload to S3/Cloudinary
+                Map<String, String> uploaded = s3Service.uploadFile(
+                        file,
+                        "finalreports/" + folderKey + "/sections"
+                );
+
+                results.add(ImageUploadResponse.UploadedImage.builder()
+                        .index(i)
+                        .originalName(originalName)
+                        .url(uploaded.get("url"))
+                        .publicId(uploaded.get("key"))
+                        .success(true)
+                        .build());
+
+                successCount++;
+                log.info("Image '{}' uploaded directly to folder '{}'", originalName, folderKey);
+
+            } catch (IOException e) {
+                log.error("Failed to upload image '{}': {}", originalName, e.getMessage());
+                results.add(buildFailedImage(i, originalName, "Upload failed: " + e.getMessage()));
+                failedCount++;
+            }
+        }
+
+        return ImageUploadResponse.builder()
+                .images(results)
+                .successCount(successCount)
+                .failedCount(failedCount)
+                .build();
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────────────────────────

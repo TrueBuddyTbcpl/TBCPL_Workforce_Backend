@@ -3,6 +3,7 @@ package com.tbcpl.workforce.admin.controller;
 import com.tbcpl.workforce.admin.dto.ClientRequestDTO;
 import com.tbcpl.workforce.admin.dto.ClientResponseDTO;
 import com.tbcpl.workforce.admin.service.ClientService;
+import com.tbcpl.workforce.common.constants.ApiEndpoints;
 import com.tbcpl.workforce.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,14 +19,17 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/admin/clients")
+@RequestMapping({
+        ApiEndpoints.ADMIN_BASE + ApiEndpoints.CLIENTS,
+        ApiEndpoints.ADMIN_BASE
+})
 @RequiredArgsConstructor
 @Slf4j
 public class ClientController {
 
     private final ClientService clientService;
 
-    @PostMapping
+    @PostMapping(ApiEndpoints.CLIENTS)
     public ResponseEntity<ApiResponse<ClientResponseDTO>> createClient(
             @Valid @RequestBody ClientRequestDTO requestDTO) {
         log.info("POST /api/v1/admin/clients - Create client request");
@@ -34,7 +38,7 @@ public class ClientController {
                 .body(ApiResponse.success("Client created successfully", response));
     }
 
-    @PostMapping("/{id}/logo")
+    @PostMapping(ApiEndpoints.CLIENT_LOGO)
     public ResponseEntity<ApiResponse<ClientResponseDTO>> uploadLogo(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) throws IOException {
@@ -43,7 +47,7 @@ public class ClientController {
         return ResponseEntity.ok(ApiResponse.success("Logo uploaded successfully", response));
     }
 
-    @GetMapping("/{id}/logo")
+    @GetMapping(ApiEndpoints.CLIENT_LOGO)
     public ResponseEntity<byte[]> getClientLogo(@PathVariable Long id) {
         log.info("GET /api/v1/admin/clients/{}/logo - Download logo", id);
         byte[] logo = clientService.getClientLogo(id);
@@ -56,21 +60,28 @@ public class ClientController {
         return ResponseEntity.ok().headers(headers).body(logo);
     }
 
-    @GetMapping
+    @GetMapping(ApiEndpoints.CLIENTS)
     public ResponseEntity<ApiResponse<List<ClientResponseDTO>>> getAllClients() {
         log.info("GET /api/v1/admin/clients - Get all clients");
         List<ClientResponseDTO> response = clientService.getAllClients();
         return ResponseEntity.ok(ApiResponse.success("Clients retrieved successfully", response));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping(ApiEndpoints.ADMIN_DROPDOWN_CLIENTS)
+    public ResponseEntity<ApiResponse<List<ClientResponseDTO>>> getClientDropdown() {
+        log.info("GET /api/v1/admin/dropdowns/clients - Get clients dropdown");
+        List<ClientResponseDTO> response = clientService.getAllClients();
+        return ResponseEntity.ok(ApiResponse.success("Clients retrieved successfully", response));
+    }
+
+    @GetMapping(ApiEndpoints.CLIENT_BY_ID)
     public ResponseEntity<ApiResponse<ClientResponseDTO>> getClientById(@PathVariable Long id) {
         log.info("GET /api/v1/admin/clients/{} - Get client by ID", id);
         ClientResponseDTO response = clientService.getClientById(id);
         return ResponseEntity.ok(ApiResponse.success("Client retrieved successfully", response));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(ApiEndpoints.CLIENT_BY_ID)
     public ResponseEntity<ApiResponse<ClientResponseDTO>> updateClient(
             @PathVariable Long id,
             @Valid @RequestBody ClientRequestDTO requestDTO) {
@@ -79,14 +90,14 @@ public class ClientController {
         return ResponseEntity.ok(ApiResponse.success("Client updated successfully", response));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping(ApiEndpoints.CLIENT_BY_ID)
     public ResponseEntity<ApiResponse<Void>> deleteClient(@PathVariable Long id) {
         log.info("DELETE /api/v1/admin/clients/{} - Delete client", id);
         clientService.deleteClient(id);
         return ResponseEntity.ok(ApiResponse.success("Client deleted successfully"));
     }
 
-    @DeleteMapping("/{id}/logo")
+    @DeleteMapping(ApiEndpoints.CLIENT_LOGO)
     public ResponseEntity<ApiResponse<ClientResponseDTO>> deleteClientLogo(@PathVariable Long id) {
         log.info("DELETE /api/v1/admin/clients/{}/logo - Delete logo", id);
         ClientResponseDTO response = clientService.deleteClientLogo(id);

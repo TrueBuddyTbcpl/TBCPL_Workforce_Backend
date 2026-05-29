@@ -149,7 +149,7 @@ public class AuthService {
     }
 
     @Transactional
-    private void cleanupExpiredSessionsForEmployee(Long employeeId) {
+    public void cleanupExpiredSessionsForEmployee(Long employeeId) {
         log.debug("Checking for expired sessions for employee ID: {}", employeeId);
 
         Optional<EmployeeSession> sessionOpt = sessionService.getActiveSession(employeeId);

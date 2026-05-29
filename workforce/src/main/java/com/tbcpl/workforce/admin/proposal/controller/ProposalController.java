@@ -3,11 +3,14 @@ package com.tbcpl.workforce.admin.proposal.controller;
 import com.tbcpl.workforce.admin.proposal.dto.request.CreateProposalRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ProposalSectionRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ProposalStatusRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ProposalSubSectionRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ReorderSectionsRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ReorderSubSectionsRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.UpdateProposalRequest;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalListItemResponse;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalResponse;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalSectionResponse;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalSubSectionResponse;
 import com.tbcpl.workforce.admin.proposal.service.ProposalService;
 import com.tbcpl.workforce.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -52,9 +55,9 @@ public class ProposalController {
         // ── TEMPORARY DEBUG — REMOVE AFTER FIX ───────────────────────────
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         log.info("=== AUTH DEBUG: principal={}, authorities={}, authenticated={}",
-                auth != null ? auth.getName()           : "NULL",
-                auth != null ? auth.getAuthorities()    : "NULL",
-                auth != null ? auth.isAuthenticated()   : "FALSE");
+                auth != null ? auth.getName()         : "NULL",
+                auth != null ? auth.getAuthorities()  : "NULL",
+                auth != null ? auth.isAuthenticated() : "FALSE");
         // ─────────────────────────────────────────────────────────────────
 
         Page<ProposalListItemResponse> data;
@@ -156,12 +159,72 @@ public class ProposalController {
     }
 
     @PatchMapping("/{id}/sections/{sectionId}/visibility")
-    public ResponseEntity<ApiResponse<ProposalSectionResponse>> toggleVisibility(
+    public ResponseEntity<ApiResponse<ProposalSectionResponse>> toggleSectionVisibility(
             @PathVariable Long id,
             @PathVariable Long sectionId
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Section visibility toggled",
-                proposalService.toggleVisibility(id, sectionId)));
+                proposalService.toggleSectionVisibility(id, sectionId)));
+    }
+
+    // ── SubSection Management ─────────────────────────────────────────────────
+
+    @PostMapping("/{id}/sections/{sectionId}/subsections")
+    public ResponseEntity<ApiResponse<ProposalSubSectionResponse>> addSubSection(
+            @PathVariable Long id,
+            @PathVariable Long sectionId,
+            @Valid @RequestBody ProposalSubSectionRequest request,
+            @RequestHeader("X-Username") String username
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        "SubSection added",
+                        proposalService.addSubSection(id, sectionId, request, username)));
+    }
+
+    @PutMapping("/{id}/sections/{sectionId}/subsections/{subSectionId}")
+    public ResponseEntity<ApiResponse<ProposalSubSectionResponse>> updateSubSection(
+            @PathVariable Long id,
+            @PathVariable Long sectionId,
+            @PathVariable Long subSectionId,
+            @Valid @RequestBody ProposalSubSectionRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "SubSection updated",
+                proposalService.updateSubSection(id, sectionId, subSectionId, request)));
+    }
+
+    @DeleteMapping("/{id}/sections/{sectionId}/subsections/{subSectionId}")
+    public ResponseEntity<ApiResponse<Void>> deleteSubSection(
+            @PathVariable Long id,
+            @PathVariable Long sectionId,
+            @PathVariable Long subSectionId
+    ) {
+        proposalService.deleteSubSection(id, sectionId, subSectionId);
+        return ResponseEntity.ok(ApiResponse.success("SubSection deleted", null));
+    }
+
+    @PatchMapping("/{id}/sections/{sectionId}/subsections/reorder")
+    public ResponseEntity<ApiResponse<ProposalSectionResponse>> reorderSubSections(
+            @PathVariable Long id,
+            @PathVariable Long sectionId,
+            @Valid @RequestBody ReorderSubSectionsRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "SubSections reordered",
+                proposalService.reorderSubSections(id, sectionId, request)));
+    }
+
+    @PatchMapping("/{id}/sections/{sectionId}/subsections/{subSectionId}/visibility")
+    public ResponseEntity<ApiResponse<ProposalSubSectionResponse>> toggleSubSectionVisibility(
+            @PathVariable Long id,
+            @PathVariable Long sectionId,
+            @PathVariable Long subSectionId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "SubSection visibility toggled",
+                proposalService.toggleSubSectionVisibility(id, sectionId, subSectionId)));
     }
 }

@@ -1,0 +1,18 @@
+package com.tbcpl.workforce.hr.grievance.entity.enums;
+
+public enum GrievanceCategory {
+    SALARY_DISCREPANCY,
+    WORKPLACE_HARASSMENT,
+    WORK_ENVIRONMENT,
+    MANAGER_BEHAVIOUR,
+    LEAVE_POLICY,
+    ATTENDANCE_DISPUTE,
+    PROMOTION_DENIAL,
+    TRANSFER_ISSUE,
+    TERMINATION_DISPUTE,
+    POLICY_VIOLATION,
+    DISCRIMINATION,
+    OVERTIME_DISPUTE,
+    FACILITY_ISSUE,
+    OTHER
+}

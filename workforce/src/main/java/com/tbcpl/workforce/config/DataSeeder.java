@@ -6,6 +6,8 @@ import com.tbcpl.workforce.auth.entity.Role;
 import com.tbcpl.workforce.auth.repository.DepartmentRepository;
 import com.tbcpl.workforce.auth.repository.EmployeeRepository;
 import com.tbcpl.workforce.auth.repository.RoleRepository;
+import com.tbcpl.workforce.common.enums.DepartmentType;
+import com.tbcpl.workforce.common.enums.RoleType;
 import com.tbcpl.workforce.common.util.EmpIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,16 +17,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Optional;
 
-/**
- * Data Seeder - Creates initial departments, roles, and admin user
- * Runs once on application startup if data doesn't exist
- */
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder {
+
+    private static final String SYSTEM = "SYSTEM";
+    private static final String DEFAULT_ADMIN_EMAIL = "control@tbcpl.co.in";
+    private static final String DEFAULT_ADMIN_PASSWORD = "TestControl#2026";
 
     private final DepartmentRepository departmentRepository;
     private final RoleRepository roleRepository;
@@ -39,170 +42,109 @@ public class DataSeeder {
             log.info("Starting data seeding...");
             log.info("==============================================");
 
-            // Seed Departments
             seedDepartments();
-
-            // Seed Roles
             seedRoles();
-
-            // Seed Admin User
             seedAdminUser();
 
             log.info("==============================================");
-            log.info("Data seeding COMPLETED successfully!");
+            log.info("Data seeding completed successfully!");
             log.info("==============================================");
         };
     }
 
-    /**
-     * Seed initial departments
-     */
     private void seedDepartments() {
-        if (departmentRepository.count() == 0) {
-            log.info("Seeding departments...");
+        log.info("Checking and seeding department master data...");
 
-            Department admin = Department.builder()
-                    .departmentName("ADMIN")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            Department hr = Department.builder()
-                    .departmentName("HR")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            Department operation = Department.builder()
-                    .departmentName("OPERATION")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            Department accounts = Department.builder()
-                    .departmentName("ACCOUNTS")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            departmentRepository.save(admin);
-            departmentRepository.save(hr);
-            departmentRepository.save(operation);
-            departmentRepository.save(accounts);
-
-            log.info("✅ Departments seeded: ADMIN, HR, OPERATION, ACCOUNTS");
-        } else {
-            log.info("⏭️  Departments already exist. Skipping seeding.");
-        }
+        Arrays.stream(DepartmentType.values()).forEach(departmentType ->
+                departmentRepository.findByDepartmentNameIgnoreCase(departmentType.name())
+                        .ifPresentOrElse(
+                                existing -> {
+                                    if (Boolean.FALSE.equals(existing.getIsActive())) {
+                                        existing.setIsActive(true);
+                                        existing.setCreatedBy(SYSTEM);
+                                        departmentRepository.save(existing);
+                                        log.info("Re-activated department: {}", departmentType.name());
+                                    } else {
+                                        log.debug("Department already present: {}", departmentType.name());
+                                    }
+                                },
+                                () -> {
+                                    Department department = Department.builder()
+                                            .departmentName(departmentType.name())
+                                            .createdBy(SYSTEM)
+                                            .isActive(true)
+                                            .build();
+                                    departmentRepository.save(department);
+                                    log.info("Seeded department: {}", departmentType.name());
+                                }
+                        )
+        );
     }
 
-    /**
-     * Seed initial roles
-     */
     private void seedRoles() {
-        if (roleRepository.count() == 0) {
-            log.info("Seeding roles...");
+        log.info("Checking and seeding role master data...");
 
-            Role superAdmin = Role.builder()
-                    .roleName("SUPER_ADMIN")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            Role hrManager = Role.builder()
-                    .roleName("HR_MANAGER")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            Role manager = Role.builder()
-                    .roleName("MANAGER")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            Role teamLead = Role.builder()
-                    .roleName("TEAM_LEAD")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            Role staff = Role.builder()
-                    .roleName("STAFF")
-                    .createdBy("SYSTEM")
-                    .isActive(true)
-                    .build();
-
-            roleRepository.save(superAdmin);
-            roleRepository.save(hrManager);
-            roleRepository.save(manager);
-            roleRepository.save(teamLead);
-            roleRepository.save(staff);
-
-            log.info("✅ Roles seeded: SUPER_ADMIN, HR_MANAGER, MANAGER, TEAM_LEAD, STAFF");
-        } else {
-            log.info("⏭️  Roles already exist. Skipping seeding.");
-        }
+        Arrays.stream(RoleType.values()).forEach(roleType ->
+                roleRepository.findByRoleNameIgnoreCase(roleType.getDbValue())
+                        .ifPresentOrElse(
+                                existing -> {
+                                    if (Boolean.FALSE.equals(existing.getIsActive())) {
+                                        existing.setIsActive(true);
+                                        existing.setCreatedBy(SYSTEM);
+                                        roleRepository.save(existing);
+                                        log.info("Re-activated role: {}", roleType.getDbValue());
+                                    } else {
+                                        log.debug("Role already present: {}", roleType.getDbValue());
+                                    }
+                                },
+                                () -> {
+                                    Role role = Role.builder()
+                                            .roleName(roleType.getDbValue())
+                                            .createdBy(SYSTEM)
+                                            .isActive(true)
+                                            .build();
+                                    roleRepository.save(role);
+                                    log.info("Seeded role: {}", roleType.getDbValue());
+                                }
+                        )
+        );
     }
 
-    /**
-     * Seed initial admin user
-     */
     private void seedAdminUser() {
-        // Check if admin already exists
-        Optional<Employee> existingAdmin = employeeRepository.findByEmailIgnoreCase("admin.2026@gnsp.co.in");
+        Optional<Employee> existingAdmin = employeeRepository.findByEmailIgnoreCase(DEFAULT_ADMIN_EMAIL);
 
         if (existingAdmin.isPresent()) {
-            log.info("⏭️  Admin user already exists");
-            log.info("==========================================");
-            log.info("   EXISTING ADMIN CREDENTIALS:");
-            log.info("==========================================");
-            log.info("   Employee ID: {}", existingAdmin.get().getEmpId());
-            log.info("   Email: admin.2026@gnsp.co.in");
-            log.info("   Password: Admin@123 (if not changed)");
-            log.info("==========================================");
+            log.info("Admin user already exists with email: {}", DEFAULT_ADMIN_EMAIL);
             return;
         }
 
-        log.info("Seeding admin user...");
+        Department adminDepartment = departmentRepository.findByDepartmentNameIgnoreCase(DepartmentType.ADMIN.name())
+                .orElseThrow(() -> new IllegalStateException("ADMIN department not found"));
 
-        // Get ADMIN department and SUPER_ADMIN role
-        Department adminDept = departmentRepository.findByDepartmentNameIgnoreCase("ADMIN")
-                .orElseThrow(() -> new RuntimeException("ADMIN department not found"));
+        Role superAdminRole = roleRepository.findByRoleNameIgnoreCase(RoleType.SUPER_ADMIN.getDbValue())
+                .orElseThrow(() -> new IllegalStateException("SUPER_ADMIN role not found"));
 
-        Role superAdminRole = roleRepository.findByRoleNameIgnoreCase("SUPER_ADMIN")
-                .orElseThrow(() -> new RuntimeException("SUPER_ADMIN role not found"));
-
-        // Generate employee ID
         String yearPrefix = LocalDate.now().getYear() + "/%";
         Integer lastEmpNumber = employeeRepository.findMaxEmployeeNumberByYear(yearPrefix);
         String empId = empIdGenerator.generateEmpId(lastEmpNumber);
 
-        // Create admin employee
         Employee admin = Employee.builder()
                 .empId(empId)
-                .email("admin.2026@gnsp.co.in")
-                .password(passwordEncoder.encode("Admin@123")) // Default password
+                .email(DEFAULT_ADMIN_EMAIL)
+                .password(passwordEncoder.encode(DEFAULT_ADMIN_PASSWORD))
                 .firstName("System")
                 .lastName("Administrator")
                 .middleName(null)
-                .department(adminDept)
+                .department(adminDepartment)
                 .role(superAdminRole)
                 .lastPasswordChangeDate(LocalDate.now())
                 .isActive(true)
-                .createdBy("SYSTEM")
+                .emailVerified(true)
+                .createdBy(SYSTEM)
                 .build();
 
         employeeRepository.save(admin);
 
-        log.info("==========================================");
-        log.info("   ✅ ADMIN USER CREATED SUCCESSFULLY!");
-        log.info("==========================================");
-        log.info("   Employee ID: {}", empId);
-        log.info("   Email: admin.2026@gnsp.co.in");
-        log.info("   Password: Admin@123");
-        log.info("==========================================");
-        log.info("   ⚠️  IMPORTANT: Change password after first login!");
-        log.info("==========================================");
+        log.info("Default admin user seeded successfully with email: {}", DEFAULT_ADMIN_EMAIL);
     }
 }

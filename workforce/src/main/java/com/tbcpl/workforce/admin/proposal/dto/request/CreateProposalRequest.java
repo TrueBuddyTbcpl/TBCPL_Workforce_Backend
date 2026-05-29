@@ -1,7 +1,9 @@
 package com.tbcpl.workforce.admin.proposal.dto.request;
 
+import com.tbcpl.workforce.admin.proposal.entity.enums.ServiceType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.util.List;
@@ -17,8 +19,18 @@ public class CreateProposalRequest {
     private Long clientId;
 
     /**
+     * Optional service type dropdown.
+     */
+    private ServiceType serviceType;
+
+    /**
+     * Optional product name, max 200 characters.
+     */
+    @Size(max = 200, message = "productName must not exceed 200 characters")
+    private String productName;
+
+    /**
      * Optional initial sections at creation time.
-     * If not provided, proposal is created with zero sections (pure DRAFT).
      */
     @Valid
     private List<ProposalSectionRequest> sections;

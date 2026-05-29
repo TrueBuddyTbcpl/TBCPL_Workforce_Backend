@@ -12,8 +12,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import com.tbcpl.workforce.common.exception.EmailNotVerifiedException;
-import org.springframework.http.HttpStatus;
 
 import java.util.HashMap;
 import java.util.Map;

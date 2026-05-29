@@ -3,16 +3,21 @@ package com.tbcpl.workforce.admin.proposal.service.impl;
 import com.tbcpl.workforce.admin.proposal.dto.request.CreateProposalRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ProposalSectionRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ProposalStatusRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ProposalSubSectionRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.ReorderSectionsRequest;
+import com.tbcpl.workforce.admin.proposal.dto.request.ReorderSubSectionsRequest;
 import com.tbcpl.workforce.admin.proposal.dto.request.UpdateProposalRequest;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalListItemResponse;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalResponse;
 import com.tbcpl.workforce.admin.proposal.dto.response.ProposalSectionResponse;
+import com.tbcpl.workforce.admin.proposal.dto.response.ProposalSubSectionResponse;
 import com.tbcpl.workforce.admin.proposal.entity.Proposal;
 import com.tbcpl.workforce.admin.proposal.entity.ProposalSection;
+import com.tbcpl.workforce.admin.proposal.entity.ProposalSubSection;
 import com.tbcpl.workforce.admin.proposal.entity.enums.ProposalStatus;
 import com.tbcpl.workforce.admin.proposal.repository.ProposalRepository;
 import com.tbcpl.workforce.admin.proposal.repository.ProposalSectionRepository;
+import com.tbcpl.workforce.admin.proposal.repository.ProposalSubSectionRepository;
 import com.tbcpl.workforce.admin.proposal.service.ProposalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,37 +40,40 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ProposalServiceImpl implements ProposalService {
 
     private static final Map<ProposalStatus, Set<ProposalStatus>> TRANSITIONS = Map.of(
-            ProposalStatus.DRAFT,                Set.of(ProposalStatus.IN_PROGRESS),
-            ProposalStatus.IN_PROGRESS,          Set.of(ProposalStatus.WAITING_FOR_APPROVAL),
+            ProposalStatus.DRAFT, Set.of(ProposalStatus.IN_PROGRESS),
+            ProposalStatus.IN_PROGRESS, Set.of(ProposalStatus.WAITING_FOR_APPROVAL),
             ProposalStatus.WAITING_FOR_APPROVAL, Set.of(
                     ProposalStatus.APPROVED,
                     ProposalStatus.REQUEST_FOR_CHANGES,
-                    ProposalStatus.DECLINED),
-            ProposalStatus.REQUEST_FOR_CHANGES,  Set.of(
+                    ProposalStatus.DECLINED
+            ),
+            ProposalStatus.REQUEST_FOR_CHANGES, Set.of(
                     ProposalStatus.IN_PROGRESS,
-                    ProposalStatus.WAITING_FOR_APPROVAL),
-            ProposalStatus.APPROVED,             Set.of(),
-            ProposalStatus.DECLINED,             Set.of()
+                    ProposalStatus.WAITING_FOR_APPROVAL
+            ),
+            ProposalStatus.APPROVED, Set.of(),
+            ProposalStatus.DECLINED, Set.of()
     );
 
-    private final ProposalRepository        proposalRepository;
+    private final ProposalRepository proposalRepository;
     private final ProposalSectionRepository sectionRepository;
+    private final ProposalSubSectionRepository subSectionRepository;
 
-    // ── Create ────────────────────────────────────────────────────────────────
     @Override
     @Transactional
     public ProposalResponse create(CreateProposalRequest request, String createdBy) {
         Proposal proposal = Proposal.builder()
                 .proposalCode(generateCode())
                 .clientId(request.getClientId())
+                .serviceType(request.getServiceType())
+                .productName(request.getProductName())
                 .status(ProposalStatus.DRAFT)
                 .createdBy(createdBy)
                 .updatedBy(createdBy)
                 .build();
 
         if (request.getSections() != null && !request.getSections().isEmpty()) {
-            List<ProposalSection> sections = buildSections(
-                    request.getSections(), proposal, createdBy);
+            List<ProposalSection> sections = buildSections(request.getSections(), proposal, createdBy);
             proposal.getSections().addAll(sections);
         }
 
@@ -74,14 +82,12 @@ public class ProposalServiceImpl implements ProposalService {
         return toResponse(proposal);
     }
 
-    // ── Get By ID ─────────────────────────────────────────────────────────────
     @Override
     @Transactional(readOnly = true)
     public ProposalResponse getById(Long id) {
         return toResponse(findActive(id));
     }
 
-    // ── Get All ───────────────────────────────────────────────────────────────
     @Override
     @Transactional(readOnly = true)
     public Page<ProposalListItemResponse> getAll(int page, int size) {
@@ -90,7 +96,6 @@ public class ProposalServiceImpl implements ProposalService {
                 .map(this::toListItem);
     }
 
-    // ── Get By Client ─────────────────────────────────────────────────────────
     @Override
     @Transactional(readOnly = true)
     public Page<ProposalListItemResponse> getByClientId(Long clientId, int page, int size) {
@@ -99,7 +104,6 @@ public class ProposalServiceImpl implements ProposalService {
                 .map(this::toListItem);
     }
 
-    // ── Get By Status ─────────────────────────────────────────────────────────
     @Override
     @Transactional(readOnly = true)
     public Page<ProposalListItemResponse> getByStatus(String status, int page, int size) {
@@ -110,12 +114,12 @@ public class ProposalServiceImpl implements ProposalService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Invalid status: " + status);
         }
+
         return proposalRepository
                 .findAllActiveByStatus(ps, PageRequest.of(page, size))
                 .map(this::toListItem);
     }
 
-    // ── Update Proposal (full section replace if sections provided) ───────────
     @Override
     @Transactional
     public ProposalResponse update(Long id, UpdateProposalRequest request, String updatedBy) {
@@ -125,11 +129,12 @@ public class ProposalServiceImpl implements ProposalService {
             proposal.setClientId(request.getClientId());
         }
 
+        proposal.setServiceType(request.getServiceType());
+        proposal.setProductName(request.getProductName());
+
         if (request.getSections() != null) {
-            // Full replace — clear existing, rebuild from request
             proposal.getSections().clear();
-            List<ProposalSection> fresh = buildSections(
-                    request.getSections(), proposal, updatedBy);
+            List<ProposalSection> fresh = buildSections(request.getSections(), proposal, updatedBy);
             proposal.getSections().addAll(fresh);
         }
 
@@ -144,18 +149,19 @@ public class ProposalServiceImpl implements ProposalService {
         return toResponse(proposal);
     }
 
-    // ── Update Status ─────────────────────────────────────────────────────────
     @Override
     @Transactional
     public ProposalResponse updateStatus(Long id, ProposalStatusRequest request, String updatedBy) {
-        Proposal       proposal = findActive(id);
-        ProposalStatus current  = proposal.getStatus();
-        ProposalStatus next     = request.getStatus();
+        Proposal proposal = findActive(id);
+        ProposalStatus current = proposal.getStatus();
+        ProposalStatus next = request.getStatus();
 
         Set<ProposalStatus> allowed = TRANSITIONS.getOrDefault(current, Set.of());
         if (!allowed.contains(next)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Cannot transition from " + current + " to " + next);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot transition from " + current + " to " + next
+            );
         }
 
         if (request.getRemarks() != null) {
@@ -165,12 +171,12 @@ public class ProposalServiceImpl implements ProposalService {
         proposal.setStatus(next);
         proposal.setUpdatedBy(updatedBy);
         proposal = proposalRepository.save(proposal);
+
         log.info("Proposal {} status: {} → {} by {}",
                 proposal.getProposalCode(), current, next, updatedBy);
         return toResponse(proposal);
     }
 
-    // ── Soft Delete ───────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void delete(Long id, String deletedBy) {
@@ -181,7 +187,6 @@ public class ProposalServiceImpl implements ProposalService {
         log.info("Proposal {} soft-deleted by {}", proposal.getProposalCode(), deletedBy);
     }
 
-    // ── Add Section ───────────────────────────────────────────────────────────
     @Override
     @Transactional
     public ProposalSectionResponse addSection(Long proposalId,
@@ -189,7 +194,7 @@ public class ProposalServiceImpl implements ProposalService {
                                               String createdBy) {
         Proposal proposal = findActive(proposalId);
 
-        int order = (request.getDisplayOrder() != null)
+        int order = request.getDisplayOrder() != null
                 ? request.getDisplayOrder()
                 : sectionRepository.findMaxDisplayOrder(proposalId) + 1;
 
@@ -204,13 +209,18 @@ public class ProposalServiceImpl implements ProposalService {
                 .createdBy(createdBy)
                 .build();
 
+        if (request.getSubSections() != null && !request.getSubSections().isEmpty()) {
+            List<ProposalSubSection> subSections = buildSubSections(
+                    request.getSubSections(), section, createdBy);
+            section.getSubSections().addAll(subSections);
+        }
+
         section = sectionRepository.save(section);
         log.info("Section '{}' added to proposal {} by {}",
                 section.getSectionKey(), proposalId, createdBy);
         return toSectionResponse(section);
     }
 
-    // ── Update Section ────────────────────────────────────────────────────────
     @Override
     @Transactional
     public ProposalSectionResponse updateSection(Long proposalId,
@@ -228,12 +238,18 @@ public class ProposalServiceImpl implements ProposalService {
             section.setDisplayOrder(request.getDisplayOrder());
         }
 
+        if (request.getSubSections() != null) {
+            section.getSubSections().clear();
+            List<ProposalSubSection> fresh = buildSubSections(
+                    request.getSubSections(), section, section.getCreatedBy());
+            section.getSubSections().addAll(fresh);
+        }
+
         section = sectionRepository.save(section);
         log.info("Section {} updated in proposal {}", sectionId, proposalId);
         return toSectionResponse(section);
     }
 
-    // ── Delete Section ────────────────────────────────────────────────────────
     @Override
     @Transactional
     public void deleteSection(Long proposalId, Long sectionId) {
@@ -242,7 +258,6 @@ public class ProposalServiceImpl implements ProposalService {
         log.info("Section {} deleted from proposal {}", sectionId, proposalId);
     }
 
-    // ── Reorder Sections ──────────────────────────────────────────────────────
     @Override
     @Transactional
     public ProposalResponse reorderSections(Long proposalId, ReorderSectionsRequest request) {
@@ -253,28 +268,27 @@ public class ProposalServiceImpl implements ProposalService {
                 .map(ProposalSection::getId)
                 .toList();
 
-        // Validate — all submitted IDs must belong to this proposal
-        boolean allMatch = request.getSectionIds().stream()
-                .allMatch(existingIds::contains);
+        boolean allMatch = request.getSectionIds().stream().allMatch(existingIds::contains);
 
         if (!allMatch || request.getSectionIds().size() != existingIds.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "sectionIds must contain exactly all section IDs of this proposal");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "sectionIds must contain exactly all section IDs of this proposal"
+            );
         }
 
         AtomicInteger order = new AtomicInteger(1);
-        request.getSectionIds().forEach(sectionId ->
-                sectionRepository.updateDisplayOrder(sectionId, order.getAndIncrement())
+        request.getSectionIds().forEach(id ->
+                sectionRepository.updateDisplayOrder(id, order.getAndIncrement())
         );
 
         log.info("Sections reordered for proposal {}", proposalId);
         return toResponse(findActive(proposalId));
     }
 
-    // ── Toggle Section Visibility ─────────────────────────────────────────────
     @Override
     @Transactional
-    public ProposalSectionResponse toggleVisibility(Long proposalId, Long sectionId) {
+    public ProposalSectionResponse toggleSectionVisibility(Long proposalId, Long sectionId) {
         ProposalSection section = findSection(proposalId, sectionId);
         section.setVisible(!section.isVisible());
         section = sectionRepository.save(section);
@@ -283,7 +297,118 @@ public class ProposalServiceImpl implements ProposalService {
         return toSectionResponse(section);
     }
 
-    // ── Private Helpers ───────────────────────────────────────────────────────
+    @Override
+    @Transactional
+    public ProposalSubSectionResponse addSubSection(Long proposalId,
+                                                    Long sectionId,
+                                                    ProposalSubSectionRequest request,
+                                                    String createdBy) {
+        findActive(proposalId);
+        ProposalSection section = findSection(proposalId, sectionId);
+
+        int order = request.getDisplayOrder() != null
+                ? request.getDisplayOrder()
+                : subSectionRepository.findMaxDisplayOrder(sectionId) + 1;
+
+        ProposalSubSection subSection = ProposalSubSection.builder()
+                .section(section)
+                .subSectionKey(request.getSubSectionKey())
+                .subSectionTitle(request.getSubSectionTitle())
+                .contentType(request.getContentType())
+                .content(request.getContent())
+                .displayOrder(order)
+                .visible(request.isVisible())
+                .createdBy(createdBy)
+                .build();
+
+        subSection = subSectionRepository.save(subSection);
+        log.info("SubSection '{}' added to section {} in proposal {} by {}",
+                subSection.getSubSectionKey(), sectionId, proposalId, createdBy);
+        return toSubSectionResponse(subSection);
+    }
+
+    @Override
+    @Transactional
+    public ProposalSubSectionResponse updateSubSection(Long proposalId,
+                                                       Long sectionId,
+                                                       Long subSectionId,
+                                                       ProposalSubSectionRequest request) {
+        findActive(proposalId);
+        findSection(proposalId, sectionId);
+        ProposalSubSection subSection = findSubSection(sectionId, subSectionId);
+
+        subSection.setSubSectionKey(request.getSubSectionKey());
+        subSection.setSubSectionTitle(request.getSubSectionTitle());
+        subSection.setContentType(request.getContentType());
+        subSection.setContent(request.getContent());
+        subSection.setVisible(request.isVisible());
+
+        if (request.getDisplayOrder() != null) {
+            subSection.setDisplayOrder(request.getDisplayOrder());
+        }
+
+        subSection = subSectionRepository.save(subSection);
+        log.info("SubSection {} updated in section {} of proposal {}",
+                subSectionId, sectionId, proposalId);
+        return toSubSectionResponse(subSection);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSubSection(Long proposalId, Long sectionId, Long subSectionId) {
+        findActive(proposalId);
+        findSection(proposalId, sectionId);
+        ProposalSubSection subSection = findSubSection(sectionId, subSectionId);
+        subSectionRepository.delete(subSection);
+        log.info("SubSection {} deleted from section {} of proposal {}",
+                subSectionId, sectionId, proposalId);
+    }
+
+    @Override
+    @Transactional
+    public ProposalSectionResponse reorderSubSections(Long proposalId,
+                                                      Long sectionId,
+                                                      ReorderSubSectionsRequest request) {
+        findActive(proposalId);
+        ProposalSection section = findSection(proposalId, sectionId);
+
+        List<Long> existingIds = section.getSubSections()
+                .stream()
+                .map(ProposalSubSection::getId)
+                .toList();
+
+        boolean allMatch = request.getSubSectionIds().stream().allMatch(existingIds::contains);
+
+        if (!allMatch || request.getSubSectionIds().size() != existingIds.size()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "subSectionIds must contain exactly all subsection IDs of this section"
+            );
+        }
+
+        AtomicInteger order = new AtomicInteger(1);
+        request.getSubSectionIds().forEach(subId ->
+                subSectionRepository.updateDisplayOrder(subId, order.getAndIncrement())
+        );
+
+        log.info("SubSections reordered for section {} in proposal {}", sectionId, proposalId);
+        return toSectionResponse(findSection(proposalId, sectionId));
+    }
+
+    @Override
+    @Transactional
+    public ProposalSubSectionResponse toggleSubSectionVisibility(Long proposalId,
+                                                                 Long sectionId,
+                                                                 Long subSectionId) {
+        findActive(proposalId);
+        findSection(proposalId, sectionId);
+        ProposalSubSection subSection = findSubSection(sectionId, subSectionId);
+        subSection.setVisible(!subSection.isVisible());
+        subSection = subSectionRepository.save(subSection);
+        log.info("SubSection {} visibility toggled to {} in section {} of proposal {}",
+                subSectionId, subSection.isVisible(), sectionId, proposalId);
+        return toSubSectionResponse(subSection);
+    }
 
     private Proposal findActive(Long id) {
         return proposalRepository.findActiveById(id)
@@ -298,6 +423,13 @@ public class ProposalServiceImpl implements ProposalService {
                         "Section " + sectionId + " not found in proposal " + proposalId));
     }
 
+    private ProposalSubSection findSubSection(Long sectionId, Long subSectionId) {
+        return subSectionRepository.findByIdAndSectionId(subSectionId, sectionId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "SubSection " + subSectionId + " not found in section " + sectionId));
+    }
+
     private String generateCode() {
         long seq = proposalRepository.countByDeletedFalse() + 1;
         return String.format("PROP-%05d", seq);
@@ -310,11 +442,11 @@ public class ProposalServiceImpl implements ProposalService {
         AtomicInteger order = new AtomicInteger(1);
 
         for (ProposalSectionRequest req : requests) {
-            int displayOrder = (req.getDisplayOrder() != null)
+            int displayOrder = req.getDisplayOrder() != null
                     ? req.getDisplayOrder()
                     : order.getAndIncrement();
 
-            sections.add(ProposalSection.builder()
+            ProposalSection section = ProposalSection.builder()
                     .proposal(proposal)
                     .sectionKey(req.getSectionKey())
                     .sectionTitle(req.getSectionTitle())
@@ -323,9 +455,44 @@ public class ProposalServiceImpl implements ProposalService {
                     .displayOrder(displayOrder)
                     .visible(req.isVisible())
                     .createdBy(createdBy)
+                    .build();
+
+            if (req.getSubSections() != null && !req.getSubSections().isEmpty()) {
+                List<ProposalSubSection> subSections = buildSubSections(
+                        req.getSubSections(), section, createdBy);
+                section.getSubSections().addAll(subSections);
+            }
+
+            sections.add(section);
+        }
+
+        return sections;
+    }
+
+    private List<ProposalSubSection> buildSubSections(List<ProposalSubSectionRequest> requests,
+                                                      ProposalSection section,
+                                                      String createdBy) {
+        List<ProposalSubSection> subSections = new ArrayList<>();
+        AtomicInteger order = new AtomicInteger(1);
+
+        for (ProposalSubSectionRequest req : requests) {
+            int displayOrder = req.getDisplayOrder() != null
+                    ? req.getDisplayOrder()
+                    : order.getAndIncrement();
+
+            subSections.add(ProposalSubSection.builder()
+                    .section(section)
+                    .subSectionKey(req.getSubSectionKey())
+                    .subSectionTitle(req.getSubSectionTitle())
+                    .contentType(req.getContentType())
+                    .content(req.getContent())
+                    .displayOrder(displayOrder)
+                    .visible(req.isVisible())
+                    .createdBy(createdBy)
                     .build());
         }
-        return sections;
+
+        return subSections;
     }
 
     private ProposalResponse toResponse(Proposal p) {
@@ -333,6 +500,8 @@ public class ProposalServiceImpl implements ProposalService {
                 .id(p.getId())
                 .proposalCode(p.getProposalCode())
                 .clientId(p.getClientId())
+                .serviceType(p.getServiceType())
+                .productName(p.getProductName())
                 .status(p.getStatus())
                 .sections(p.getSections().stream()
                         .map(this::toSectionResponse)
@@ -350,6 +519,8 @@ public class ProposalServiceImpl implements ProposalService {
                 .id(p.getId())
                 .proposalCode(p.getProposalCode())
                 .clientId(p.getClientId())
+                .serviceType(p.getServiceType())
+                .productName(p.getProductName())
                 .status(p.getStatus())
                 .createdBy(p.getCreatedBy())
                 .createdAt(p.getCreatedAt())
@@ -366,9 +537,27 @@ public class ProposalServiceImpl implements ProposalService {
                 .content(s.getContent())
                 .displayOrder(s.getDisplayOrder())
                 .visible(s.isVisible())
+                .subSections(s.getSubSections().stream()
+                        .map(this::toSubSectionResponse)
+                        .toList())
                 .createdBy(s.getCreatedBy())
                 .createdAt(s.getCreatedAt())
                 .updatedAt(s.getUpdatedAt())
+                .build();
+    }
+
+    private ProposalSubSectionResponse toSubSectionResponse(ProposalSubSection ss) {
+        return ProposalSubSectionResponse.builder()
+                .id(ss.getId())
+                .subSectionKey(ss.getSubSectionKey())
+                .subSectionTitle(ss.getSubSectionTitle())
+                .contentType(ss.getContentType())
+                .content(ss.getContent())
+                .displayOrder(ss.getDisplayOrder())
+                .visible(ss.isVisible())
+                .createdBy(ss.getCreatedBy())
+                .createdAt(ss.getCreatedAt())
+                .updatedAt(ss.getUpdatedAt())
                 .build();
     }
 }

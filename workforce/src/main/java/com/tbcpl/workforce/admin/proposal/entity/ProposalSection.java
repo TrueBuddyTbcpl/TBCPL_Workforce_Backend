@@ -7,6 +7,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -34,14 +36,12 @@ public class ProposalSection {
 
     /**
      * Machine-readable key — e.g. "background", "scope_of_work", "professional_fee"
-     * Used by frontend to identify section type for rendering.
      */
     @Column(name = "section_key", nullable = false, length = 80)
     private String sectionKey;
 
     /**
      * Human-readable display title — e.g. "Background", "Scope of Work"
-     * User can rename this freely.
      */
     @Column(name = "section_title", nullable = false, length = 150)
     private String sectionTitle;
@@ -51,19 +51,17 @@ public class ProposalSection {
     private SectionContentType contentType;
 
     /**
-     * Stores the actual content.
-     * - TEXT    → plain string
-     * - LIST    → JSON array of strings
-     * - FEE     → JSON array of { label, amount, note }
-     * - TABLE   → JSON array of { key, value }
-     * - CUSTOM  → any valid JSON
+     * Stores the actual content of the section itself.
+     * - TEXT  → plain string
+     * - LIST  → JSON array of strings
+     * - FEE   → JSON array of { label, amount, note }
+     * - TABLE → JSON array of { key, value }
      */
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
     /**
      * Controls rendering order. Starts at 1.
-     * Frontend reorder → PATCH /sections/reorder updates this.
      */
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder;
@@ -74,6 +72,20 @@ public class ProposalSection {
     @Builder.Default
     @Column(name = "is_visible", nullable = false)
     private boolean visible = true;
+
+    /**
+     * Ordered list of subsections belonging to this section.
+     * Supports TEXT, LIST, TABLE content types only.
+     */
+    @Builder.Default
+    @OneToMany(
+            mappedBy      = "section",
+            cascade       = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch         = FetchType.LAZY
+    )
+    @OrderBy("displayOrder ASC")
+    private List<ProposalSubSection> subSections = new ArrayList<>();
 
     @Column(name = "created_by", nullable = false, length = 60)
     private String createdBy;
