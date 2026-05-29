@@ -21,5 +21,11 @@ public class SectionData {
     private Object content;      // deserialized based on type at runtime
     private List<String> images; // Cloudinary URLs
     private String notes;
-    private String notesHeading;
+
+    // New independent note controls without headings
+    private Boolean showTopNote;
+    private String topNote;
+
+    private Boolean showBottomNote;
+    private String bottomNote;
 }
